@@ -14,7 +14,7 @@ class FakeData(Dataset):
     def __init__(self, dataset_type):
         assert dataset_type in ['constant', 'random']
         self.dataset_type = dataset_type
-        self.len = 1
+        self.len = int(1e5)
 
     def __len__(self):
         return self.len
@@ -29,23 +29,33 @@ class FakeData(Dataset):
 
         return x, torch.zeros(1)
 
+# list of all datasets 
+def all_datasets():
+    datasets = [
+        'mnist', 'fmnist', 'kmnist', 'svhn', 'cifar10', 'cifar100', 
+        'celeba', 'constant', 'random',
+    ]
+    return datasets
+
 def get_loader(path, dataset_name, split, batch_size, workers):
     assert split in ['train', 'test']
-    assert dataset_name in ['mnist', 'fmnist', 'kmnist', 'svhn', 'cifar10', 'cifar100', 'celeba', 'imagenet', 'constant', 'random']
+    assert dataset_name in all_datasets() 
 
     train = split == 'train'
 
     # resize everything to 32x32
     colour_transforms = transforms.Compose([
-        transforms.Resize(32),
+        transforms.Resize((32,32)),
         transforms.ToTensor(),
+        transforms.RandomHorizontalFlip(),
     ])
 
     # if grey, convert to color by stacking channels
     grey_transforms = transforms.Compose([
-        transforms.Resize(32),
+        transforms.Resize((32,32)),
         transforms.ToTensor(),
-        Grey2Color()
+        transforms.RandomHorizontalFlip(),
+        Grey2Color(),
     ]) 
 
     # get dataset, assumes that '__main__' was run to download images already
@@ -64,7 +74,7 @@ def get_loader(path, dataset_name, split, batch_size, workers):
     elif dataset_name == 'celeba':
         dataset = datasets.CelebA(root=path, split=split, download=True, transform=colour_transforms)
     elif dataset_name == 'imagenet':
-        dataset = datasets.ImageNet(root=path, split=split, download=True, transform=colour_transforms)
+        dataset = datasets.ImageNet(root=path, split=split, transform=colour_transforms)
     elif dataset_name in ['constant', 'random']:
         dataset = FakeData(dataset_type=dataset_name)
     else: raise NotImplementedError
@@ -89,8 +99,7 @@ import matplotlib.pyplot as plt
 if __name__ == '__main__':
     path = '/drive2/ood/'
 
-    #names = ['mnist', 'fmnist', 'kmnist', 'svhn', 'cifar10', 'cifar100', 'celeba', 'constant', 'random'] #'imagenet']
-    names = ['constant', 'random']
+    names = ['mnist', 'fmnist', 'kmnist', 'svhn', 'cifar10', 'cifar100', 'celeba', 'constant', 'random', 'imagenet']
     for name in names:
         # plot some images
         loader = get_loader(path, name, 'train', 2, 1)
