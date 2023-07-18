@@ -43,7 +43,6 @@ def ood_test(model, loss_fn, args, consistent_score=False):
     for dataset in dataset_names:
         loader = get_loader(args.data_path, dataset, 'test', args.batch_size, args.workers)
         score = test(model, loader, loss_fn, args.device, consistent_score=consistent_score)
-        score = test(model, loader, loss_fn, args.device) 
         score_track[dataset] = score
 
     return score_track

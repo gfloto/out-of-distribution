@@ -26,7 +26,7 @@ def get_args():
     parser.add_argument('--max_grad_norm', type=float, default=1., help='max grad norm')
 
     parser.add_argument('--save_images', type=bool, default=True, help='boolean, sample images')
-    parser.add_argument('--save_freq', type=int, default=5, help='frequency of saving model')
+    parser.add_argument('--save_freq', type=int, default=2, help='frequency of saving model')
     parser.add_argument('--device', default='cuda', help='device being used')
 
     args = parser.parse_args()

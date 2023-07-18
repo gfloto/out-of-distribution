@@ -3,6 +3,7 @@ import torch
 import numpy as np
 from tqdm import tqdm
 
+from dist import dist_matrix
 from plot import save_images
 from utils import ptnp
 
@@ -11,6 +12,9 @@ def train(model, loader, loss_fn, optim, args):
     recon_track, percept_track, kld_track = [], [], []
     for i, (x, _) in enumerate(tqdm(loader)):            
         x = x.to(args.device)
+
+        # get distance metric
+        dist = dist_matrix(x)
 
         # push through model
         z, mu, x_out = model(x)
