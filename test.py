@@ -11,22 +11,16 @@ from metrics import metrics
 from datasets import all_datasets, get_loader
 
 @torch.no_grad()
-def test(model, loader, loss_fn, device, consistent_score=False):
+def test(model, loader, loss_fn, device):
     model.eval()
     
     for i, (x, _) in enumerate(loader):            
-        if i > 25: break
         x = x.to(device)
 
         # push through model
-        if not consistent_score:
-            _, mu, x_out = model(x, test=True)
-            recon, percept, kld = loss_fn(x, x_out, mu, test=True)
-            score = recon + percept + kld
-        else:
-            _, mu_0, x_out = model(x)
-            _, mu_1, _ = model(x_out)
-            score = (mu_0 - mu_1).pow(2).sum(dim=-1)
+        _, mu, x_out = model(x, test=True)
+        recon, iso, center = loss_fn(x, x_out, mu, test=True)
+        score = recon + iso + center
 
         if i == 0:
             score_track = score
@@ -36,13 +30,13 @@ def test(model, loader, loss_fn, device, consistent_score=False):
     return ptnp(score_track)
 
 # run ood vs id testing on all available datasets
-def ood_test(model, loss_fn, args, consistent_score=False):
+def ood_test(model, loss_fn, args):
     dataset_names = all_datasets()
 
     score_track = {}
     for dataset in dataset_names:
         loader = get_loader(args.data_path, dataset, 'test', args.batch_size, args.workers)
-        score = test(model, loader, loss_fn, args.device, consistent_score=consistent_score)
+        score = test(model, loader, loss_fn, args.device)
         score_track[dataset] = score
 
     return score_track

@@ -1,6 +1,5 @@
 import sys, os 
 import torch
-import numpy as np 
 
 from args import get_args
 from datasets import get_loader
@@ -32,7 +31,6 @@ def main():
     optim = torch.optim.Adam(model.parameters(), lr=args.lr)
     loss_fn = Loss(args) 
     print(f'number of parameters: {sum(p.numel() for p in model.parameters())}')
-    print(f'latent dim: {args.lat_dim}, spheres: {args.spheres}, tilt: {args.tilt}')
 
     # load model and optimizer if resuming training
     if args.resume_path is not None:
@@ -41,15 +39,15 @@ def main():
         optim.load_state_dict(torch.load(os.path.join(save_path, 'optim.pt')))
 
     # main training loop
-    nll_track = None; consist_track = None
-    track = {'recon': [], 'percept': [], 'kld': []}
+    metric_track = None
+    track = {'recon': [], 'iso': [], 'center': []}
     for epoch in range(args.epochs):
-        recon, percept, kld = train(model, loader, loss_fn, optim, args)
+        recon, iso, center = train(model, loader, loss_fn, optim, args)
 
         # update loss track
         track['recon'].append(recon)
-        track['percept'].append(percept)
-        track['kld'].append(kld)
+        track['iso'].append(iso)
+        track['center'].append(center)
 
         # save and plot loss data
         loss_plot(save_path, track)
@@ -58,20 +56,17 @@ def main():
                 f.write(f'{key}: {val}\n')
 
         # save model, print images to view
-        if epoch == args.epochs-1 or epoch % args.save_freq == 0:
-            print('saving model and optimizer')
-            torch.save(model.state_dict(), os.path.join(save_path, 'model.pt'))
-            torch.save(optim.state_dict(), os.path.join(save_path, 'optim.pt'))
+        print('saving model and optimizer')
+        torch.save(model.state_dict(), os.path.join(save_path, 'model.pt'))
+        torch.save(optim.state_dict(), os.path.join(save_path, 'optim.pt'))
 
-            # get and save test results
-            nll = ood_test(model, loss_fn, args)
-            nll_metric = metrics(nll, args.dataset)
-            nll_track = update_test(nll_metric, nll_track)
-
-            consist = ood_test(model, loss_fn, args, consistent_score=True)
-            consist_metric = metrics(consist, args.dataset)
-            consist_track = update_test(consist_metric, consist_track)
-            test_plot(save_path, nll_track, consist_track)
+        # get and save test results
+        if epoch == args.epochs-1 or epoch % args.test_freq == 0:
+            score = ood_test(model, loss_fn, args)
+            metric = metrics(score, args.dataset)
+            
+            metric_track = update_test(metric, metric_track)
+            test_plot(save_path, metric_track)
 
 if __name__ == '__main__':
     main()

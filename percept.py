@@ -82,8 +82,13 @@ class Percept(nn.Module):
         val = res[0]
         for l in range(1, len(self.chns)):
             val += res[l]
-        return val
 
+        val = val.sum((1,2,3))
+
+        # currently 0 if similar and 1 if dissimilar
+        # change s.t. 1 if similar and -1 if dissimilar
+        val = -2*val + 1
+        return val
 
 class ScalingLayer(nn.Module):
     def __init__(self):
