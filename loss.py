@@ -5,9 +5,9 @@ import torch.nn as nn
 from dist_matrix import DistMatrix, z_dist
 
 class Loss(nn.Module):
-    def __init__(self, args):
+    def __init__(self, loader, args):
         super(Loss, self).__init__()
-        self.x_dist = DistMatrix(args.device)
+        self.x_dist = DistMatrix(loader, args.device)
         self.recon = args.recon
         self.f = 10
 
@@ -24,7 +24,7 @@ class Loss(nn.Module):
         z_mtx = z_dist(mu, mu)
 
         # isometry loss
-        iso = (x_mtx - z_mtx).abs().mean(dim=(1))
+        iso = (x_mtx - z_mtx).abs()
 
         # center
         center = 1e-3 * mu.square().mean(dim=(1))

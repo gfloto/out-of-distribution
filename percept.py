@@ -85,9 +85,11 @@ class Percept(nn.Module):
 
         val = val.sum((1,2,3))
 
-        # currently 0 if similar and 1 if dissimilar
-        # change s.t. 1 if similar and -1 if dissimilar
-        val = -2*val + 1
+        # clip to 0-1
+        if torch.any(val > 1) or torch.any(val < 0):
+            print("Warning: LPIPS distance outside range [0,1]. Clipping.")
+        val = torch.clamp(val, 0, 1)
+
         return val
 
 class ScalingLayer(nn.Module):

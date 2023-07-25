@@ -41,6 +41,10 @@ class VAE(nn.Module):
 
     def forward(self, input, t=None, test=False):
         z, mu = self.encode(input, t)
+        # ensure norm of z is 1
+        norm = torch.norm(z, dim=1, keepdim=True)
+        z = z / norm
+
         if not test:
             x_out = self.decode(z, t)
         else:
