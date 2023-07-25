@@ -26,8 +26,8 @@ def main():
     save_path = os.path.join('results', args.test_name)
 
     # dataloader, model, loss, etc
-    loader = get_loader(args.data_path, args.dataset, 'train', args.batch_size, args.workers)
-    model = get_model(args.lat_dim).to(args.device)
+    loader = get_loader(args.data_path, args.dataset, 'train', args.batch_size)
+    model = get_model(args).to(args.device)
     optim = torch.optim.Adam(model.parameters(), lr=args.lr)
     loss_fn = Loss(loader, args) 
     print(f'number of parameters: {sum(p.numel() for p in model.parameters())}')
@@ -35,8 +35,9 @@ def main():
     # load model and optimizer if resuming training
     if args.resume_path is not None:
         print('loading model and optimizer from checkpoint')
-        model.load_state_dict(torch.load(os.path.join(save_path, 'model.pt')))
-        optim.load_state_dict(torch.load(os.path.join(save_path, 'optim.pt')))
+        load_path = os.path.join('results', args.resume_path)
+        model.load_state_dict(torch.load(os.path.join(load_path, 'model.pt')))
+        optim.load_state_dict(torch.load(os.path.join(load_path, 'optim.pt')))
 
     # main training loop
     metric_track = None
@@ -64,6 +65,7 @@ def main():
         if epoch == args.epochs-1 or epoch % args.test_freq == 0:
             score = ood_test(model, loss_fn, args)
             metric = metrics(score, args.dataset)
+            print(metric)
             
             metric_track = update_test(metric, metric_track)
             test_plot(save_path, metric_track)

@@ -37,7 +37,7 @@ def all_datasets():
     ]
     return datasets
 
-def get_loader(path, dataset_name, split, batch_size, workers):
+def get_loader(path, dataset_name, split, batch_size):
     assert split in ['train', 'test']
     assert dataset_name in all_datasets() 
 
@@ -80,7 +80,7 @@ def get_loader(path, dataset_name, split, batch_size, workers):
     else: raise NotImplementedError
 
     # get loader
-    loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
+    loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)
     return loader
 
 '''

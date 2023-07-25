@@ -9,7 +9,6 @@ class Loss(nn.Module):
         super(Loss, self).__init__()
         self.x_dist = DistMatrix(loader, args.device)
         self.recon = args.recon
-        self.f = 10
 
     def forward(self, x, x_out, mu, test=False):
         # recon loss options
@@ -20,11 +19,11 @@ class Loss(nn.Module):
         else: raise ValueError('invalid reconstruction loss')
 
         # get tgt distance metric
-        x_mtx = self.f * self.x_dist(x)
-        z_mtx = z_dist(mu, mu)
+        x_mtx = self.x_dist(x)
+        mu_mtx = z_dist(mu, mu)
 
         # isometry loss
-        iso = (x_mtx - z_mtx).abs()
+        iso = (x_mtx - mu_mtx).square()
 
         # center
         center = 1e-3 * mu.square().mean(dim=(1))

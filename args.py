@@ -2,6 +2,11 @@ import sys, os
 import json
 import argparse
 
+def bool_str(x):
+    if x in ['True', 'true']: return True 
+    elif x in ['False', 'false']: return False 
+    else: raise ValueError('invalid boolean')
+
 # return args for training
 def get_args():
     parser = argparse.ArgumentParser()
@@ -12,12 +17,15 @@ def get_args():
     parser.add_argument('--dataset', default='cifar10', help='dataset, either odo or damage')
 
     parser.add_argument('--lat_dim', type=int, default=64*2**2, help='latent dimension')
-    parser.add_argument('--recon', default='l1', help='loss, either l2 or l1')
+
+    parser.add_argument('--recon', default='l2', help='loss, either l2 or l1')
+    parser.add_argument('--recon_lambda', type=float, default=1., help='reconstruction loss weight')
+    parser.add_argument('--noise', type=float, default=0.1, help='noise level')
+    parser.add_argument('--norm', default='true', help='normalize data')
 
     parser.add_argument('--lr', type=float, default=1e-5, help='learning rate')
     parser.add_argument('--epochs', type=int, default=500, help='number of epochs to train for')
     parser.add_argument('--batch_size', type=int, default=32, help='input batch size')
-    parser.add_argument('--workers', type=int, default=4, help='number of workers for dataloader')
 
     parser.add_argument('--max_grad_norm', type=float, default=1., help='max grad norm')
 
@@ -29,6 +37,8 @@ def get_args():
 
     # TODO: change this
     args.use_timestep = True
+
+    args.norm = bool_str(args.norm)
 
     # asserts
     assert args.test_name is not None, 'enter a test name'

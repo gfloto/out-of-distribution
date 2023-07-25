@@ -29,7 +29,7 @@ def test(model, train_loader, test_loader, loss_fn, device):
         # only look at test data
         iso = iso[:s,s:].mean(dim=(1))
         recon = recon[:s]; center = center[:s]
-        score = iso #recon + iso + center
+        score = recon + iso + center
 
         if i == 0:
             score_track = score
@@ -41,11 +41,11 @@ def test(model, train_loader, test_loader, loss_fn, device):
 # run ood vs id testing on all available datasets
 def ood_test(model, loss_fn, args):
     dataset_names = all_datasets()
-    train_loader = get_loader(args.data_path, args.dataset, 'train', args.batch_size//2, args.workers)
+    train_loader = get_loader(args.data_path, args.dataset, 'train', args.batch_size//2)
 
     score_track = {}
     for dataset in dataset_names:
-        test_loader = get_loader(args.data_path, dataset, 'test', args.batch_size//2, args.workers)
+        test_loader = get_loader(args.data_path, dataset, 'test', args.batch_size//2)
         score = test(model, train_loader, test_loader, loss_fn, args.device)
         score_track[dataset] = score
 

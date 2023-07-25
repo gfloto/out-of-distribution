@@ -82,6 +82,7 @@ def z_dist(x1, x2):
     assert x1.shape == x2.shape
     assert len(x1.shape) == 2
 
+
     g = x1 @ x2.T
     return g
 
