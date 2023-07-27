@@ -1,4 +1,4 @@
-import sys, os 
+import os 
 import torch
 
 from args import get_args
@@ -62,13 +62,12 @@ def main():
         torch.save(optim.state_dict(), os.path.join(save_path, 'optim.pt'))
 
         # get and save test results
-        if epoch == args.epochs-1 or epoch % args.test_freq == 0:
-            score = ood_test(model, loss_fn, args)
-            metric = metrics(score, args.dataset)
-            print(metric)
-            
-            metric_track = update_test(metric, metric_track)
-            test_plot(save_path, metric_track)
+        score = ood_test(model, loss_fn, args)
+        metric = metrics(score, args.dataset)
+        print(metric)
+        
+        metric_track = update_test(metric, metric_track)
+        test_plot(save_path, metric_track)
 
 if __name__ == '__main__':
     main()

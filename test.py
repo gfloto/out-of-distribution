@@ -16,6 +16,7 @@ def test(model, train_loader, test_loader, loss_fn, device):
     # iterate through both dataloaders
     for i, ((x_train, _), (x_test, _)) in enumerate(zip(train_loader, test_loader)): 
         if x_train.shape != x_test.shape: break
+
         s = x_train.shape[0] // 2
 
         x_train = x_train.to(device)
@@ -26,7 +27,7 @@ def test(model, train_loader, test_loader, loss_fn, device):
         _, mu, x_out = model(x, test=True)
         recon, iso, center = loss_fn(x, x_out, mu, test=True)
 
-        # only look at test data
+        # only look at how test data is related to train
         iso = iso[:s,s:].mean(dim=(1))
         recon = recon[:s]; center = center[:s]
         score = recon + iso + center
@@ -49,10 +50,12 @@ def ood_test(model, loss_fn, args):
         score = test(model, train_loader, test_loader, loss_fn, args.device)
         score_track[dataset] = score
 
+        print(f'{dataset}: {score.mean():.5f}')
+
     return score_track
 
 if __name__ == '__main__':
-    path = 'results/dev'
+    path = 'results/smaller_lmbd'
     device = 'cuda'
 
     # load training args
@@ -63,10 +66,10 @@ if __name__ == '__main__':
     train_dataset = args.dataset
 
     # load model
-    model = get_model(args.lat_dim).to(device)
+    model = get_model(args).to(device)
     model.load_state_dict(torch.load(os.path.join(path, 'model.pt')))
 
-    train_loader = get_loader(args.data_path, train_dataset, 'train', args.batch_size, args.workers)
+    train_loader = get_loader(args.data_path, train_dataset, 'train', args.batch_size)
     loss_fn = Loss(train_loader, args)
 
     # get testing performance

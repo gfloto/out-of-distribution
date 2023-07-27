@@ -1,4 +1,3 @@
-import sys
 import torch
 import torch.nn as nn
 
@@ -7,8 +6,9 @@ from dist_matrix import DistMatrix, z_dist
 class Loss(nn.Module):
     def __init__(self, loader, args):
         super(Loss, self).__init__()
-        self.x_dist = DistMatrix(loader, args.device)
+        self.x_dist = DistMatrix(loader, args)
         self.recon = args.recon
+        self.metric = args.metric
 
     def forward(self, x, x_out, mu, test=False):
         # recon loss options
@@ -20,7 +20,7 @@ class Loss(nn.Module):
 
         # get tgt distance metric
         x_mtx = self.x_dist(x)
-        mu_mtx = z_dist(mu, mu)
+        mu_mtx = z_dist(mu, metric=self.metric)
 
         # isometry loss
         iso = (x_mtx - mu_mtx).square()

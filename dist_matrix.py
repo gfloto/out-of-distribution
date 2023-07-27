@@ -9,12 +9,13 @@ from datasets import get_loader
 
 # pairwise distance matrix using perceptual distance
 class DistMatrix:
-    def __init__(self, loader, device):
-        self.device = device
-        self.model = Percept().eval().to(device)
+    def __init__(self, loader, args):
+        self.device = args.device
+        self.metric = args.metric
+        self.model = Percept().eval().to(args.device)
 
         self.mean = None; self.std = None
-        self.mean, self.std = self.get_mean_std(loader, device)
+        self.mean, self.std = self.get_mean_std(loader, args.device)
         self.mean = 0.34538; self.std = 0.29584
         print(f'using mean: {self.mean:.5f} and std: {self.std:.5f} for normalizing perceptual distance matrix')
 
@@ -40,7 +41,7 @@ class DistMatrix:
         return value.mean(), value.std()
         
     @ torch.no_grad()
-    def __call__(self, x, batch_size=4096):
+    def __call__(self, x, batch_size=1024):
         # rearrange x into batches to compute pairwise distances
         # we only need to compute the upper triangular matrix
         self.x1_all = []; self.x2_all = []
@@ -63,7 +64,13 @@ class DistMatrix:
                 dist_batch = dist_batch.log() - (1 - dist_batch).log()
                 dist_batch = (dist_batch - self.mean) / self.std
                 dist_batch = torch.sigmoid(dist_batch)
+
+            # l2 has close 0, far 2 (z on unit sphere)
+            # inner prod has close 1, far -1
+            if self.metric == 'inner_prod':
                 dist_batch = -2*dist_batch + 1
+            elif self.metric == 'l2':
+                dist_batch = 2*dist_batch
 
             dist = torch.cat((dist, dist_batch)) if dist is not None else dist_batch 
 
@@ -78,34 +85,38 @@ class DistMatrix:
         return out + out.T + torch.eye(x.shape[0]).to(x.device)
 
 # pairwise gram matrix
-def z_dist(x1, x2):
-    assert x1.shape == x2.shape
-    assert len(x1.shape) == 2
+def z_dist(x, metric):
+    assert len(x.shape) == 2
 
-
-    g = x1 @ x2.T
-    return g
+    g = x @ x.T
+    if metric == 'inner_prod':
+        return g
+    elif metric == 'l2':
+        s = g.shape[0]
+        a = g.diag().repeat(s, 1)
+        return a.T + a - 2*g
+    else: raise ValueError('invalid distance mode')
 
 # ensure that dist matrix is correct
 def test_dist(data_path):
     # test torch cdist
     a = torch.randn(64, 12)
-    b = torch.randn(64, 12)
-    dist = z_dist(a, b)
+    dist = z_dist(a, 'l2')
 
     # check correctness
     for i in range(100):
         i = np.random.randint(0, a.shape[0])
         j = np.random.randint(0, a.shape[0])
 
-        assert dist[i,j] - (a[i] @ b[j]) < 1e-5
+        assert torch.allclose(dist[i,j], (a[i] - a[j]).norm())
     print('\nlatent distance matrix test passed\n')
+    quit()
 
     # -------------------
 
     # loader    
-    loader = get_loader(data_path, 'cifar10', 'train', 32, 4)
-    dist_matrix = DistMatrix('cuda')
+    loader = get_loader(data_path, 'cifar10', 'train', 32)
+    dist_matrix = DistMatrix(loader, 'cuda')
 
     # get sample
     x, _ = next(iter(loader))
@@ -113,7 +124,6 @@ def test_dist(data_path):
 
     # check distance matrix
     dist = dist_matrix(x)
-    print(dist)
 
     # check for 100 random samples that dist is correct
     percept = dist_matrix.model
@@ -126,6 +136,8 @@ def test_dist(data_path):
 
 if __name__ == '__main__':
     data_path = '/drive2/ood/'
+    test_dist(data_path)
+    quit()
 
     # check distribution of distances
     loader = get_loader(data_path, 'cifar10', 'train', 32, 4)
