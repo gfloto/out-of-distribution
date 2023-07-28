@@ -15,7 +15,6 @@ def get_args():
     parser.add_argument('--resume_path', default=None, help='experiment path to resume training from')
 
     parser.add_argument('--dataset', default='cifar10', help='dataset, either odo or damage')
-
     parser.add_argument('--lat_dim', type=int, default=256, help='latent dimension')
 
     parser.add_argument('--recon', default='l2', help='loss, either l2 or l1')

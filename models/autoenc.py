@@ -5,12 +5,11 @@ import json
 
 import torch
 import torch.nn as nn
-import numpy as np
 from einops import rearrange
 
 # TODO: fix this to make the .yaml integrate with args better...
 # return model given yaml file
-def get_model(args):
+def get_autoenc(args):
     yaml_path = 'configs/custom_vqgan.yaml'
     with open(yaml_path) as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
@@ -56,7 +55,7 @@ class VAE(nn.Module):
 
         return z, mu, x_out
 
-    def encode(self, x, t):
+    def encode(self, x, t=None):
         h = self.encoder(x, t)
         h = self.enc_conv(h)
 
@@ -68,7 +67,7 @@ class VAE(nn.Module):
         z = mu + self.noise * torch.randn_like(mu)
         return z, mu
 
-    def decode(self, z, t):
+    def decode(self, z, t=None):
         h = self.dec_lin(z)
         h = rearrange(h, 'b (c h w) -> b c h w', c=self.embed_dim, h=self.conv_size, w=self.conv_size)
         h = self.dec_conv(h)

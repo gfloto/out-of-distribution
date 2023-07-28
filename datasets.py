@@ -32,8 +32,11 @@ class FakeData(Dataset):
 # list of all datasets 
 def all_datasets():
     datasets = [
-        'mnist', 'fmnist', 'kmnist', 'svhn', 'cifar10', 'cifar100', 
-        #'celeba', 'constant', 'random',
+        'constant', 'random',
+        'mnist', 'fmnist', 'kmnist',
+        'svhn', 'lsun', 'celeba', 
+        'cifar100', 'imagenet',
+        'cifar10',
     ]
     return datasets
 
@@ -73,7 +76,12 @@ def get_loader(path, dataset_name, split, batch_size):
         dataset = datasets.CIFAR100(root=path, train=train, download=True, transform=colour_transforms)
     elif dataset_name == 'celeba':
         dataset = datasets.CelebA(root=path, split=split, download=True, transform=colour_transforms)
+    elif dataset_name == 'lsun':
+        split = 'bedroom_train' #if train else 'bedroom_val'
+        path = '/drive2/ood/lsun/'
+        dataset = datasets.LSUN(root=path, classes=[split], transform=colour_transforms)
     elif dataset_name == 'imagenet':
+        split = 'train'
         dataset = datasets.ImageNet(root=path, split=split, transform=colour_transforms)
     elif dataset_name in ['constant', 'random']:
         dataset = FakeData(dataset_type=dataset_name)
