@@ -7,6 +7,7 @@ import torch
 import numpy as np
 from einops import rearrange
 
+from utils import ptnp
 from models.unet import Unet
 from datasets import get_latents, save_latents
 from diffusion_utils import Diffusion
@@ -68,13 +69,29 @@ class LatentLoader:
     def shuffle_ind(self):
         self.ind = np.random.permutation(self.ind)
 
-def train(model, loader, optim, args):
+def train(model, loader, diffusion, optim, args):
 
-    for i, x in enumerate(tqdm(loader)):
-        x = x.to(args.device)
-        t = torch.rand(size=((1,))).to(args.device)
-        out = model(x, t)
-    quit()
+    loss_track = []
+    for i, x0 in enumerate(tqdm(loader)):
+        x0 = x0.to(args.device)
+        t_ = np.random.randint(0, args.T)
+        t = torch.tensor([t_]).to(args.device)
+
+        # get xt
+        xt, eps = diffusion.forward(x0, t_) 
+
+        # push through model
+        pred = model(xt, t)
+        loss = (pred - eps).pow(2).mean()
+
+        # backprop
+        optim.zero_grad()
+        loss.backward()
+        optim.step()        
+
+        loss_track.append(ptnp(loss))
+    
+    return np.mean(loss_track)
 
 def main():
     args = get_args()
@@ -99,7 +116,7 @@ def main():
     print(f'number of parameters: {sum(p.numel() for p in model.parameters())}')
 
     # diffusion helper object
-    diffusion = Diffusion(args.T)
+    diffusion = Diffusion(args.T, args.device)
 
     # load model and optimizer if resuming training
     if args.resume_path is not None:
@@ -108,11 +125,11 @@ def main():
         model.load_state_dict(torch.load(os.path.join(load_path, 'model.pt')))
         optim.load_state_dict(torch.load(os.path.join(load_path, 'optim.pt')))
 
-
     # train diffusion model
+    loss_track = []
     for epoch in range(args.epochs):
-        train(model, loader, optim, args)
-        pass
+        loss = train(model, loader, diffusion, optim, args)
+        print(loss)
 
 if __name__ == '__main__':
     main()

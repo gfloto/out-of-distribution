@@ -18,17 +18,17 @@ def make_alphas(T=1000):
     return alpha
 
 class Diffusion:
-    def __init__(self, T=1000):
+    def __init__(self, T, device):
         self.T = T
-        self.alpha_bars = make_alpha_bars(T)
-        self.alphas = make_alphas(T)
+        self.alpha_bars = make_alpha_bars(T).to(device)
+        self.alphas = make_alphas(T).to(device)
 
     # get xt given x0 and t for training the diffusion model
     def forward(self, x0, t):
         alpha_bar = self.alpha_bars[t]
-        eps = torch.randn_like(x)
+        eps = torch.randn_like(x0)
         xt = alpha_bar.sqrt() * x0 + (1 - alpha_bar).sqrt() * eps
-        return xt
+        return xt, eps
     
     # get x_{t-1} given x_t and t for sampling from the diffusion model
     def sample(self, xt, pred, t):
