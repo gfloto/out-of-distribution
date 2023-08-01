@@ -9,23 +9,16 @@ import matplotlib.pyplot as plt
 from utils import ptnp
 
 # plots aucroc for in-dist vs out-of-dist
-def test_plot(save_path, nll, consist):
-    fig = plt.figure(figsize=(12,6))
-    fig1 = fig.add_subplot(121)
-    fig2 = fig.add_subplot(122)
+def test_plot(save_path, iso):
+    fig = plt.figure(figsize=(6,6))
+    fig1 = fig.add_subplot(111)
 
-    for k, v in nll.items():
+    for k, v in iso.items():
         fig1.plot(v, label=k)
     fig1.legend()
-    fig1.set_title('NLL')
-
-    for k, v in consist.items():
-        fig2.plot(v, label=k)
-    fig2.legend()
-    fig2.set_title('Consistency')
+    fig1.set_title('Isometry')
 
     fig1.set_ylim([0,1])
-    fig2.set_ylim([0,1])
     
     plt.tight_layout()
     plt.savefig(os.path.join(save_path, 'metrics.png'))
@@ -34,8 +27,8 @@ def test_plot(save_path, nll, consist):
 # plot training loss
 def loss_plot(save_path, track):
     recon_track = np.array(track['recon'])
-    percept_track = np.array(track['percept'])
-    kld_track = np.array(track['kld'])
+    iso_track = np.array(track['iso'])
+    center_track = np.array(track['center'])
     plt.style.use('seaborn')
 
     fig = plt.figure(figsize=(6,6))
@@ -45,22 +38,22 @@ def loss_plot(save_path, track):
     fig4 = fig.add_subplot(224)
 
     fig1.plot(recon_track, 'k')
-    fig2.plot(kld_track, 'r')
-    fig3.plot(percept_track, 'g')
-    fig4.plot(recon_track + kld_track + percept_track, 'b')
+    fig2.plot(iso_track, 'r')
+    fig3.plot(center_track, 'g')
+    fig4.plot(recon_track + iso_track + center_track, 'b')
 
     fig1.set_title('Reconstruction')
-    fig2.set_title('KL-Divergence')
-    fig3.set_title('Perceptual')
+    fig2.set_title('Isometry')
+    fig3.set_title('Centering')
     fig4.set_title('Total Loss')
 
     plt.tight_layout()
     plt.savefig(os.path.join(save_path,'loss.png'))
     plt.close()
 
-    np.save(os.path.join(save_path, 'train_recon.npy'), recon_track)
-    np.save(os.path.join(save_path, 'train_percept.npy'), percept_track)
-    np.save(os.path.join(save_path, 'train_kld.npy'), kld_track)
+    np.save(os.path.join(save_path, 'recon.npy'), recon_track)
+    np.save(os.path.join(save_path, 'iso.npy'), iso_track)
+    np.save(os.path.join(save_path, 'center.npy'), center_track)
 
 def save_sample(x, save_path, n=8):
     batch_size = x.shape[0]

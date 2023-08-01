@@ -82,7 +82,7 @@ if __name__ == '__main__':
             axs[i].set_title(dataset)
 
         # label ticks of similarity matrix to match datasets in samples
-        axs[n].imshow(sim, cmap='binary', vmin=np.min(sim), vmax=1.5*np.max(sim))
+        axs[n].imshow(sim, cmap='gray', vmin=1.5*np.min(sim), vmax=np.max(sim))
         for i, dataset in enumerate(datasets):
             axs[n].text(i, i, dataset, ha='center', va='center')
 

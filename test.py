@@ -1,55 +1,62 @@
-import sys, os 
+import os 
 import json
 import torch
-from tqdm import tqdm
 from argparse import Namespace
 
 from utils import ptnp
 from loss import Loss
-from models import get_model
+from models.autoenc import get_autoenc
 from metrics import metrics
 from datasets import all_datasets, get_loader
 
 @torch.no_grad()
-def test(model, loader, loss_fn, device, consistent_score=False):
+def test(model, train_loader, test_loader, loss_fn, device):
     model.eval()
-    
-    for i, (x, _) in enumerate(loader):            
-        if i > 25: break
-        x = x.to(device)
+
+    # iterate through both dataloaders
+    for i, ((x_train, _), (x_test, _)) in enumerate(zip(train_loader, test_loader)): 
+        if x_train.shape != x_test.shape: break
+        if i > 10: break
+
+        s = x_train.shape[0] // 2
+
+        x_train = x_train.to(device)
+        x_test = x_test.to(device)
+        x = torch.cat((x_test, x_train), dim=0)
 
         # push through model
-        if not consistent_score:
-            _, mu, x_out = model(x, test=True)
-            recon, percept, kld = loss_fn(x, x_out, mu, test=True)
-            score = recon + percept + kld
-        else:
-            _, mu_0, x_out = model(x)
-            _, mu_1, _ = model(x_out)
-            score = (mu_0 - mu_1).pow(2).sum(dim=-1)
+        _, mu, x_out = model(x, test=True)
+        recon, iso, center = loss_fn(x, x_out, mu, test=True)
+
+        # only look at how test data is related to train
+        iso = iso[:s,s:].mean(dim=(1))
+        recon = recon[:s]; center = center[:s]
+        score = recon + iso + center
 
         if i == 0:
             score_track = score
         else:
             score_track = torch.cat((score_track, score), dim=0)
-    
+
     return ptnp(score_track)
 
 # run ood vs id testing on all available datasets
-def ood_test(model, loss_fn, args, consistent_score=False):
+def ood_test(model, loss_fn, args):
     dataset_names = all_datasets()
+    train_loader = get_loader(args.data_path, args.dataset, 'train', args.batch_size//2)
 
     score_track = {}
     for dataset in dataset_names:
-        loader = get_loader(args.data_path, dataset, 'test', args.batch_size, args.workers)
-        score = test(model, loader, loss_fn, args.device, consistent_score=consistent_score)
-        score = test(model, loader, loss_fn, args.device) 
+        test_loader = get_loader(args.data_path, dataset, 'test', args.batch_size//2)
+        score = test(model, train_loader, test_loader, loss_fn, args.device)
         score_track[dataset] = score
+
+        print(f'{dataset}: {score.mean():.5f}')
 
     return score_track
 
 if __name__ == '__main__':
-    path = 'results/pre'
+    path = 'results/smaller_lmbd'
     device = 'cuda'
 
     # load training args
@@ -60,20 +67,13 @@ if __name__ == '__main__':
     train_dataset = args.dataset
 
     # load model
-    model = get_model(args.lat_dim).to(device)
+    model = get_autoenc(args).to(device)
     model.load_state_dict(torch.load(os.path.join(path, 'model.pt')))
-    loss_fn = Loss(args)
 
-    # nll score
-    save_path = os.path.join(path, 'metrics_nll.json')
-    score_track = ood_test(model, loss_fn, args)
-    nll = metrics(score_track, train_dataset)
-    with open(save_path, 'w') as f:
-        json.dump(nll, f)
+    train_loader = get_loader(args.data_path, train_dataset, 'train', args.batch_size)
+    loss_fn = Loss(train_loader, args)
 
-    # consistent score
-    save_path = os.path.join(path, 'metrics_consistent.json')
-    score_track = ood_test(model, loss_fn, args, consistent_score=True)
-    consist = metrics(score_track, train_dataset)
-    with open(save_path, 'w') as f:
-        json.dump(consist, f)
+    # get testing performance
+    score = ood_test(model, loss_fn, args)
+    metric = metrics(score, args.dataset)
+    print(metric)

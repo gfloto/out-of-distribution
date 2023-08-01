@@ -5,22 +5,21 @@ import json
 
 import torch
 import torch.nn as nn
-import numpy as np
 from einops import rearrange
 
 # TODO: fix this to make the .yaml integrate with args better...
 # return model given yaml file
-def get_model(lat_dim, use_timestep=False):
+def get_autoenc(args):
     yaml_path = 'configs/custom_vqgan.yaml'
     with open(yaml_path) as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
     ddconfig = config['model']['params']['ddconfig']
     embed_dim = config['model']['params']['embed_dim']
 
-    return VAE(ddconfig, embed_dim, lat_dim, use_timestep)
+    return VAE(ddconfig, embed_dim, args.lat_dim, args.noise, args.norm)
 
 class VAE(nn.Module):
-    def __init__(self, ddconfig, embed_dim, lat_dim, use_timestep=False):
+    def __init__(self, ddconfig, embed_dim, lat_dim, noise, norm, use_timestep=False):
         super().__init__()
         # make encoder and decoder
         self.encoder = Encoder(**ddconfig, use_timestep=use_timestep)
@@ -28,6 +27,8 @@ class VAE(nn.Module):
 
         # additional encoder layers
         self.conv_size = 2 # TODO: fix this
+        self.noise = noise
+        self.norm = norm
         self.lat_dim = lat_dim
         self.embed_dim = embed_dim
         self.enc_conv = torch.nn.Conv2d(ddconfig["z_channels"], embed_dim, 1)
@@ -41,6 +42,12 @@ class VAE(nn.Module):
 
     def forward(self, input, t=None, test=False):
         z, mu = self.encode(input, t)
+
+        # ensure norm of z is 1
+        if self.norm:
+            z = z / torch.norm(z, dim=1, keepdim=True)
+            mu = mu / torch.norm(mu, dim=1, keepdim=True)
+
         if not test:
             x_out = self.decode(z, t)
         else:
@@ -48,7 +55,7 @@ class VAE(nn.Module):
 
         return z, mu, x_out
 
-    def encode(self, x, t):
+    def encode(self, x, t=None):
         h = self.encoder(x, t)
         h = self.enc_conv(h)
 
@@ -57,10 +64,10 @@ class VAE(nn.Module):
         mu = self.enc_lin(h)
 
         # add guassian noise
-        z = mu + torch.randn_like(mu)
+        z = mu + self.noise * torch.randn_like(mu)
         return z, mu
 
-    def decode(self, z, t):
+    def decode(self, z, t=None):
         h = self.dec_lin(z)
         h = rearrange(h, 'b (c h w) -> b c h w', c=self.embed_dim, h=self.conv_size, w=self.conv_size)
         h = self.dec_conv(h)
