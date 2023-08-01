@@ -91,16 +91,74 @@ def get_loader(path, dataset_name, split, batch_size):
     loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)
     return loader
 
-'''
-download datasets
-celeba and imagenet require external downloads
 
-celeba:
-    - celeba requires: TODO: list files in path/celeba/
+# latent space datasets
+# ---------------------------- #
+import os 
+import json 
+from tqdm import tqdm
+from argparse import Namespace
 
-imagenet:
-    - imagenet requires: wget https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train.tar
-'''
+from models.autoenc import get_autoenc
+
+# save latent space representations of all datasets
+@torch.no_grad()
+def z_store(model, loader, device):
+    z_all = None; recon_all = None
+    for i, (x, _) in enumerate(tqdm(loader)):
+        if i == 24: break
+        x = x.to(device)
+
+        _, mu, x_out = model(x)
+        recon = (x - x_out).square().mean(dim=(1,2,3))
+
+        if z_all is None:
+            z_all = mu
+            recon_all = recon
+        else:
+            z_all = torch.cat((z_all, mu), dim=0)
+            recon_all = torch.cat((recon_all, recon), dim=0)
+    
+    return z_all, recon_all
+
+# given experiment name, save latent space representations of all datasets
+def save_latents(name, train_dataset, device):
+    batch_size = 2048
+
+    # make dir of compressed representations
+    save_path = os.path.join(name, 'lat')
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+
+    # get args
+    with open(os.path.join(name, 'args.json'), 'r') as f:
+        args = json.load(f)
+        args = Namespace(**args)
+
+    # load model
+    model = get_autoenc(args).to(args.device)
+    model.load_state_dict(torch.load(os.path.join(name, 'model.pt')))
+
+    datasets = all_datasets()
+    for i, dataset in enumerate(datasets):
+        if dataset == train_dataset: 
+            modes = ['train', 'test']
+        else: 
+            modes = ['test']
+
+        for mode in modes:
+            loader = get_loader(args.data_path, dataset, mode, batch_size)
+            z, recon = z_store(model, loader, device)
+
+            # save z
+            torch.save(z, os.path.join(save_path, f'{dataset}_{mode}_z.pt'))
+            torch.save(recon, os.path.join(save_path, f'{dataset}_{mode}_recon.pt'))
+
+def get_latents(path, dataset, mode):
+    assert mode in ['train', 'test']
+
+    z = torch.load(os.path.join(path, 'lat', f'{dataset}_{mode}_z.pt'))
+    return z
 
 import matplotlib.pyplot as plt
 

@@ -21,7 +21,7 @@ def get_args():
     parser.add_argument('--recon_lambda', type=float, default=1., help='reconstruction loss weight')
     parser.add_argument('--noise', type=float, default=0.1, help='noise level')
     parser.add_argument('--norm', default='true', help='normalize data')
-    parser.add_argument('--metric', default='inner_prod', help='metric to use for latent space')
+    parser.add_argument('--metric', default='l2', help='metric to use for latent space')
 
     parser.add_argument('--lr', type=float, default=1e-5, help='learning rate')
     parser.add_argument('--epochs', type=int, default=500, help='number of epochs to train for')

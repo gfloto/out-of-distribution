@@ -1,32 +1,13 @@
 import math
-import copy
-from pathlib import Path
-from random import random
 from functools import partial
 from collections import namedtuple
-from multiprocessing import cpu_count
 
 import torch
 from torch import nn, einsum
-from torch.cuda.amp import autocast
 import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
-
-from torch.optim import Adam
-
-from torchvision import transforms as T, utils
-
-from einops import rearrange, reduce, repeat
+from einops import rearrange
 from einops.layers.torch import Rearrange
 
-from PIL import Image
-from tqdm.auto import tqdm
-
-#from ema_pytorch import EMA
-#from accelerate import Accelerator
-#from denoising_diffusion_pytorch.attend import Attend
-#from denoising_diffusion_pytorch.fid_evaluation import FIDEvaluation
-#from denoising_diffusion_pytorch.version import __version__
 
 # constants
 ModelPrediction =  namedtuple('ModelPrediction', ['pred_noise', 'pred_x_start'])
@@ -394,7 +375,6 @@ class Unet(nn.Module):
         block_klass = partial(ResnetBlock, groups = resnet_block_groups)
 
         # time embeddings
-
         time_dim = dim * 4
 
         self.random_or_learned_sinusoidal_cond = learned_sinusoidal_cond or random_fourier_features
@@ -414,7 +394,6 @@ class Unet(nn.Module):
         )
 
         # attention
-
         num_stages = len(dim_mults)
         full_attn  = cast_tuple(full_attn, num_stages)
         attn_heads = cast_tuple(attn_heads, num_stages)

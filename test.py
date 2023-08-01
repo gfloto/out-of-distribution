@@ -5,7 +5,7 @@ from argparse import Namespace
 
 from utils import ptnp
 from loss import Loss
-from models import get_model
+from models.autoenc import get_autoenc
 from metrics import metrics
 from datasets import all_datasets, get_loader
 
@@ -16,6 +16,7 @@ def test(model, train_loader, test_loader, loss_fn, device):
     # iterate through both dataloaders
     for i, ((x_train, _), (x_test, _)) in enumerate(zip(train_loader, test_loader)): 
         if x_train.shape != x_test.shape: break
+        if i > 10: break
 
         s = x_train.shape[0] // 2
 
@@ -66,7 +67,7 @@ if __name__ == '__main__':
     train_dataset = args.dataset
 
     # load model
-    model = get_model(args).to(device)
+    model = get_autoenc(args).to(device)
     model.load_state_dict(torch.load(os.path.join(path, 'model.pt')))
 
     train_loader = get_loader(args.data_path, train_dataset, 'train', args.batch_size)

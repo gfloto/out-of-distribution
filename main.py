@@ -3,7 +3,7 @@ import torch
 
 from args import get_args
 from datasets import get_loader
-from models import get_model
+from models.autoenc import get_autoenc
 from loss import Loss
 from train import train
 from plot import loss_plot, test_plot
@@ -27,7 +27,7 @@ def main():
 
     # dataloader, model, loss, etc
     loader = get_loader(args.data_path, args.dataset, 'train', args.batch_size)
-    model = get_model(args).to(args.device)
+    model = get_autoenc(args).to(args.device)
     optim = torch.optim.Adam(model.parameters(), lr=args.lr)
     loss_fn = Loss(loader, args) 
     print(f'number of parameters: {sum(p.numel() for p in model.parameters())}')
