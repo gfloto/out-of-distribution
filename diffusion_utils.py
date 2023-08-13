@@ -20,27 +20,62 @@ def make_alphas(T=1000):
 class Diffusion:
     def __init__(self, T, device):
         self.T = T
+        self.device = device
         self.alpha_bars = make_alpha_bars(T).to(device)
         self.alphas = make_alphas(T).to(device)
 
     # get xt given x0 and t for training the diffusion model
-    def forward(self, x0, t):
+    def q_xt_x0(self, x0, t):
         alpha_bar = self.alpha_bars[t]
         eps = torch.randn_like(x0)
         xt = alpha_bar.sqrt() * x0 + (1 - alpha_bar).sqrt() * eps
         return xt, eps
     
+    # get x_{t-1} given x_t and t for likelihood calculation
+    def q_xt_xtm1(self, xtm1, t):
+        alpha = self.alphas[t]
+        eps = torch.randn_like(xtm1)
+
+        xt = alpha.sqrt() * xtm1 + (1 - alpha).sqrt() * eps
+        return xt, eps
+    
     # get x_{t-1} given x_t and t for sampling from the diffusion model
-    def sample(self, xt, pred, t):
+    def p_xtm1_xt(self, xt, pred, t):
         alpha_bar = self.alpha_bars[t]
         alpha = self.alphas[t]
         sig = (1 - alpha_bar).sqrt()
-        eps = torch.randn_like(xt)
 
+        eps = torch.randn_like(xt)
         c = (1 - alpha) / (1 - alpha_bar).sqrt()
         xtm1 = 1/alpha.sqrt() * (xt - c*pred) + sig*eps
 
         return xtm1
+    
+    # for T steps, get x_T, x_{T-1}, ..., x_0 to generate a sample
+    def sample(self, model):
+        x = torch.randn(1, 3, 32, 32).to(self.device)
+        for t in range(self.T-1, -1, -1):
+            pred = model(x, t)
+            x = self.sample_step(x, pred, t)
+        return x
+
+    # given some x0, get the likelihood (ignoring the constant terms, and L_0 for now...)
+    # E[-log p(x0)] <= sum L_t-1 = sum_{t=2}^T D_KL q(x_t-1 | x_t) || p(x_t-1 | x_t)
+    # L_t-1 (x0) = below
+    def likelihood(self, x0, model):
+        total_ll = 0
+        for t in range(self.T):
+            # use an estimate of the expectation with a single sample
+            alpha = self.alphas[t]
+            alpha_bar = self.alpha_bars[t]
+            sig = (1 - alpha_bar).sqrt()
+            c = (1 - alpha)**2 / (2*sig * alpha * (1 - alpha_bar))
+
+            xtm1, eps = self.q_xt_xtm1(x0, t)
+            pred = model(xtm1, t)
+            
+            ll = c * (eps - pred).square().sum(dim=(1,2,3))
+            total_ll = total_ll + ll
 
 
 import matplotlib.pyplot as plt
