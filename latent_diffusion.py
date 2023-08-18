@@ -22,7 +22,7 @@ def get_args():
 
     parser.add_argument('--epochs', type=int, default=500, help='number of epochs to train for')
     parser.add_argument('--lr', type=float, default=1e-5, help='learning rate')
-    parser.add_argument('--T', type=int, default=1000, help='number of diffusion steps')
+    parser.add_argument('--T', type=int, default=200, help='number of diffusion steps')
     parser.add_argument('--device', default='cuda', help='device being used')
 
     args = parser.parse_args()
@@ -105,7 +105,8 @@ def main():
     if d.is_integer(): d = int(d)
     else: raise ValueError('latent dimension must be a perfect square')
 
-    #save_latents(save_path, train_args.dataset, args.device) 
+    save_latents(save_path, train_args.dataset, args.device) 
+    quit()
     z = get_latents(save_path, train_args.dataset, 'train') 
     z = rearrange(z, 'b (h w) -> b 1 h w', h=d, w=d) 
     loader = LatentLoader(z, batch_size=64, shuffle=True)
@@ -129,7 +130,9 @@ def main():
     loss_track = []
     for epoch in range(args.epochs):
         loss = train(model, loader, diffusion, optim, args)
-        print(loss)
+    
+    # save model
+    torch.save(model.state_dict(), os.path.join(save_path, 'model.pt'))
 
 if __name__ == '__main__':
     main()

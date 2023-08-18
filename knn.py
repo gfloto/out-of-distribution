@@ -1,23 +1,22 @@
 import os 
 import torch 
 import json
-from tqdm import tqdm
+from argparse import Namespace
 
 import numpy as np
 from einops import rearrange
 from sklearn.metrics import roc_auc_score 
 import matplotlib.pyplot as plt
 
-from args import get_args
 from models.autoenc import get_autoenc
 from dist_matrix import z_dist
-from datasets import get_loader, all_datasets
+from datasets import all_datasets
 
 def get_data(dataset, mode):
     z = torch.load(os.path.join(name, 'lat', f'{dataset}_{mode}_z.pt')).to(device)
     recon = torch.load(os.path.join(name, 'lat', f'{dataset}_{mode}_recon.pt')).cpu().numpy()
 
-    return z, recon
+    return z[:4096], recon[:4096]
 
 def get_nn(z_train, z_test=None, k=1): 
     if z_test is not None:
@@ -75,10 +74,10 @@ def vis(model, z, dataset):
     plt.show()
 
 if __name__ == '__main__':
-    k = 1
-    alpha = 0#k//2
+    k = 300
+    alpha = 2*k
     vis = False
-    name = 'results/l2_lat256'
+    name = 'results/l2_cifar10_256'
     train_dataset = 'cifar10'
     device = 'cuda'
     #save_z(name, train_dataset, device)
