@@ -40,7 +40,7 @@ def norm_const(xn, v, d):
     assert len(v.shape) == 1
 
     num = g(xn).pow(d-1)
-    denom = (1 - xn.pow(2)) * xn.pow(d-1) * v.sqrt().pow(d) * np.float_power(2*np.pi, d/2)
+    denom = (1 - xn.pow(2)) * xn.pow(d-1) * v.pow(d).sqrt() * np.float_power(2*np.pi, d/2)
 
     return 2 * num / denom
 
@@ -84,11 +84,11 @@ def log_pdf(x, mu, v):
     return gauss_ball(x, mu, v).log()
 
 if __name__ == '__main__':
-    n = 100000
-    d = 10
+    n = 1000
+    d = 2
 
     # cube discard method, poor scaling performance...
-    x = torch.rand(n, d, dtype=torch.float64)
+    x = torch.randn(n, d, dtype=torch.float64)
     while True:
         x = x[x.norm(dim=1) < 1]
         if x.shape[0] >= n: break
@@ -96,11 +96,11 @@ if __name__ == '__main__':
         x_add = torch.rand(n, d, dtype=torch.float64)
         x = torch.cat([x, x_add], dim=0)
     x = x[:n]
+    print('good')
 
     # random parameters for gaussian ball
     mu = 2*torch.rand(d) - 1
-    #v = torch.randn(1).abs()
-    v = torch.tensor([1])
+    v = torch.rand(1).abs()
     print(f'v: {v.numpy()}, mu: {mu.numpy()}')
 
     # get pdf
@@ -118,7 +118,6 @@ if __name__ == '__main__':
     integral = monte_integrate(y, d)
     print(f'Integral: {integral:.4f}')
     print(f'Average score difference: {(y_score - y_score_fd).abs().mean().numpy()}')
-    quit()
 
     if x.shape[1] == 2:
         # plot gaussian ball using 3d plot
