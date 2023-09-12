@@ -13,10 +13,11 @@ class Loss(nn.Module):
     def forward(self, x, x_out, mu, test=False):
         # recon loss options
         if self.recon == 'l2':
-            recon = (x - x_out).square().mean(dim=(1,2,3))
+            recon_loss_vec = (x - x_out).square()
         elif self.recon == 'l1':
-            recon = (x - x_out).abs().mean(dim=(1,2,3))
+            recon_loss_vec = (x - x_out).abs()
         else: raise ValueError('invalid reconstruction loss')
+        recon = recon_loss_vec.mean(dim=(1,2,3))
 
         # get tgt distance metric
         x_mtx = self.x_dist(x)

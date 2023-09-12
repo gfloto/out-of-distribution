@@ -3,12 +3,13 @@ import torch
 import numpy as np
 from tqdm import tqdm
 
-from plots.plot import save_images
+from plot import save_images
 from utils import ptnp
 
 # main training loop
 def train(model, loader, loss_fn, optim, args):
     recon_track, iso_track, center_track = [], [], []
+
     for i, (x, _) in enumerate(tqdm(loader)):            
         x = x.to(args.device)
 

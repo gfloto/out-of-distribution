@@ -15,7 +15,7 @@ def get_autoenc(args):
         config = yaml.load(f, Loader=yaml.FullLoader)
     ddconfig = config['model']['params']['ddconfig']
     embed_dim = config['model']['params']['embed_dim']
-
+    print(f"Creating VAE with latent dimension {args.lat_dim}")
     return VAE(ddconfig, embed_dim, args.lat_dim, args.noise, args.norm)
 
 class VAE(nn.Module):
