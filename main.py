@@ -6,7 +6,7 @@ from datasets import get_loader
 from models.autoenc import get_autoenc
 from loss import Loss
 from train import train
-from plot import loss_plot, test_plot
+from plots.plot import loss_plot, test_plot
 from test import ood_test
 from metrics import metrics
 

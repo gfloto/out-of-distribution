@@ -11,11 +11,13 @@ def bool_str(x):
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--test_name', default='dev')
-    parser.add_argument('--data_path', default='/drive2/ood/', help='train dataset, either odo or damage')
+    parser.add_argument('--data_path', default='./data', help='train dataset, either odo or damage')
     parser.add_argument('--resume_path', default=None, help='experiment path to resume training from')
 
     parser.add_argument('--dataset', default='cifar10', help='dataset, either odo or damage')
     parser.add_argument('--lat_dim', type=int, default=256, help='latent dimension')
+    # specify multiple latent dimensions to train over, e.g. --latent_dims 2 4 8 16 32 64 128
+    parser.add_argument('--lat_dims', type=int, nargs='+', default=[2, 4, 8, 16, 32, 64, 128], help='latent dimension')
 
     parser.add_argument('--recon', default='l2', help='loss, either l2 or l1')
     parser.add_argument('--recon_lambda', type=float, default=1., help='reconstruction loss weight')

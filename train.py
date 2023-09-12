@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from tqdm import tqdm
 
-from plot import save_images
+from plots.plot import save_images
 from utils import ptnp
 
 # main training loop
