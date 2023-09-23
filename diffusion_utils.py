@@ -1,4 +1,6 @@
 import torch 
+from tqdm import tqdm
+from einops import rearrange
 
 def f(t, T):
     # f(t) = cos(pi*t/T + s) / 2*(1 + s)**2
@@ -11,7 +13,7 @@ def make_alpha_bars(T):
     alpha_bars = f(x, T) / f(0, T)
     return alpha_bars
 
-def make_alphas(T=1000):
+def make_alphas(T):
     # beta = 1 - (alpha_bar_t / alpha_bar_{t-1})
     alpha_bars = make_alpha_bars(T+1)
     alpha = alpha_bars[1:] / alpha_bars[:-1]
@@ -23,6 +25,8 @@ class Diffusion:
         self.device = device
         self.alpha_bars = make_alpha_bars(T).to(device)
         self.alphas = make_alphas(T).to(device)
+
+        check_alpha = self.alphas.cumprod(dim=0)
 
     # get xt given x0 and t for training the diffusion model
     def q_xt_x0(self, x0, t):
@@ -52,11 +56,22 @@ class Diffusion:
         return xtm1
     
     # for T steps, get x_T, x_{T-1}, ..., x_0 to generate a sample
-    def sample(self, model):
-        x = torch.randn(1, 3, 32, 32).to(self.device)
-        for t in range(self.T-1, -1, -1):
+    @torch.no_grad()
+    def sample(self, model, autoenc, dim):
+        x = torch.randn(16, dim, dim).to(self.device)
+        for t_ in tqdm(range(self.T-1, 0, -1)):
+            t = torch.tensor([t_]).float().to(self.device) / self.T
+
             pred = model(x, t)
-            x = self.sample_step(x, pred, t)
+            x = self.p_xtm1_xt(x, pred, t_)
+
+            # get average length of x
+            temp = rearrange(x, 'b h w -> b (h w)')
+            avg_len = temp.square().sum(dim=1).sqrt().mean()
+            print(f'avg length: {avg_len:.5f}')
+
+        x = rearrange(x, 'b h w -> b (h w)')
+        x = autoenc.decode(x)
         return x
 
     # given some x0, get the likelihood (ignoring the constant terms, and L_0 for now...)
@@ -76,7 +91,6 @@ class Diffusion:
             
             ll = c * (eps - pred).square().sum(dim=(1,2,3))
             total_ll = total_ll + ll
-
 
 import matplotlib.pyplot as plt
 if __name__ == '__main__':

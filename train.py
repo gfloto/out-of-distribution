@@ -8,8 +8,9 @@ from utils import ptnp
 
 # main training loop
 def train(model, loader, loss_fn, optim, args):
-    recon_track, iso_track, center_track = [], [], []
-    for i, (x, _) in enumerate(tqdm(loader)):            
+    recon_track, iso_track = [], []
+    for i, (x, _) in enumerate(tqdm(loader)):
+        #if i > 5: break
         x = x.to(args.device)
 
         # push through model
@@ -25,13 +26,12 @@ def train(model, loader, loss_fn, optim, args):
                     
         recon_track.append(ptnp(recon))
         iso_track.append(ptnp(iso))
-        center_track.append(ptnp(center))
 
     # save sample images
     if args.save_images:
         save_images(x, x_out, os.path.join('results', args.test_name, 'sample.png'))
 
-    return np.mean(recon_track), np.mean(iso_track), np.mean(center_track) 
+    return np.mean(recon_track), np.mean(iso_track) 
 
 if __name__== '__main__':
     pass

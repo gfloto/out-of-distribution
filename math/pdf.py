@@ -40,9 +40,14 @@ def norm_const(xn, v, d):
     assert len(v.shape) == 1
 
     num = g(xn).pow(d-1)
-    denom = (1 - xn.pow(2)) * xn.pow(d-1) * v.pow(d).sqrt() * np.float_power(2*np.pi, d/2)
-
+    denom = (1 - xn.pow(2)) * xn.pow(d-1) * v.sqrt().pow(d) * np.float_power(2*np.pi, d/2)
     return 2 * num / denom
+
+    #a = g(xn).pow(d) / xn.pow(d)
+    #b = 2*xn / (g(xn) * (1 - xn.pow(2))) - 1
+    #c = v.sqrt().pow(d) * np.float_power(2*np.pi, d/2)
+
+    #return a * b / c
 
 def gauss_ball_score(x, mu, v):
     assert len(x.shape) == 2
@@ -85,7 +90,7 @@ def log_pdf(x, mu, v):
 
 if __name__ == '__main__':
     n = 1000
-    d = 2
+    d = 1
 
     # cube discard method, poor scaling performance...
     x = torch.randn(n, d, dtype=torch.float64)

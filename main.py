@@ -43,12 +43,11 @@ def main():
     metric_track = None
     track = {'recon': [], 'iso': [], 'center': []}
     for epoch in range(args.epochs):
-        recon, iso, center = train(model, loader, loss_fn, optim, args)
+        recon, iso = train(model, loader, loss_fn, optim, args)
 
         # update loss track
         track['recon'].append(recon)
         track['iso'].append(iso)
-        track['center'].append(center)
 
         # save and plot loss data
         loss_plot(save_path, track)
@@ -64,7 +63,6 @@ def main():
         # get and save test results
         score = ood_test(model, loss_fn, args)
         metric = metrics(score, args.dataset)
-        print(metric)
         
         metric_track = update_test(metric, metric_track)
         test_plot(save_path, metric_track)
