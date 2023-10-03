@@ -41,11 +41,6 @@ def get_args():
     args.use_timestep = True
     args.norm = bool_str(args.norm)
 
-    # latent codes must be a perfect square for diffusion stage
-    d = np.sqrt(args.lat_dim)
-    if d.is_integer(): d = int(d)
-    else: raise ValueError('latent dimension must be a perfect square')
-
     # asserts
     assert args.test_name is not None, 'enter a test name'
     assert args.lat_dim > 0, 'latent dimension must be positive'

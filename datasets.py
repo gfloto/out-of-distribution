@@ -32,11 +32,11 @@ class FakeData(Dataset):
 # list of all datasets 
 def all_datasets():
     datasets = [
-        #'constant', 'random',
-        'mnist', 'fmnist', 'kmnist',
-        #'svhn', 'celeba',
-        #'lsun',
-        #'cifar100', 'imagenet', 'cifar10',
+        'constant', 'random',
+        'mnist', 'fmnist', 'kmnist', 'cifar10'
+        'svhn', 'celeba',
+        'lsun',
+        'cifar100', 'imagenet'#, 'cifar10',
     ]
     return datasets
 

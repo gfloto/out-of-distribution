@@ -7,24 +7,28 @@ import torch
 import numpy as np
 from einops import rearrange
 
+from models.basic import Basic
+from models.transformer import Transformer
+
 from utils import ptnp
 from models.autoenc import get_autoenc
-from models.transformer import Transformer
 from datasets import get_latents, save_latents
 from diffusion_utils import Diffusion
 from plot import save_sample, diff_loss_plot
 from datasets import all_datasets
+from metrics import metrics
 
 def get_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--test_name', default='mnist_36')
+    parser.add_argument('--test_name', default='lat_36')
     parser.add_argument('--data_path', default='/drive2/ood/', help='train dataset, either odo or damage')
     parser.add_argument('--resume_path', default=None, help='experiment path to resume training from')
 
+    parser.add_argument('--batch_size', type=int, default=256, help='input batch size')
     parser.add_argument('--epochs', type=int, default=500, help='number of epochs to train for')
     parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
-    parser.add_argument('--T', type=int, default=200, help='number of diffusion steps')
+    parser.add_argument('--T', type=int, default=500, help='number of diffusion steps')
     parser.add_argument('--device', default='cuda', help='device being used')
 
     parser.add_argument('--gen_lats', action='store_true', help='generate latents for training') 
@@ -38,15 +42,11 @@ def get_args():
     return args
 
 # convenience function for getting latent loader
-def get_lat_loader(save_path, dataset, batch_size=64):
-    z = get_latents(save_path, dataset, 'train') 
+def get_lat_loader(save_path, dataset, mode, batch_size=64):
+    assert mode in ['train', 'test']
+    if mode == 'test': batch_size = 32
 
-    # reshape to be square for transformer / unet
-    d = np.sqrt(z.shape[1])
-    if d.is_integer(): d = int(d)
-    else: raise ValueError('latent dimension must be a perfect square')
-
-    z = rearrange(z, 'b (h w) -> b h w', h=d, w=d) 
+    z = get_latents(save_path, dataset, mode) 
     loader = LatentLoader(z, batch_size=batch_size, shuffle=True)
 
     return loader
@@ -65,7 +65,6 @@ class LatentLoader:
             self.ind = np.arange(x.shape[0])
 
         self.dim = x.shape[1]
-        assert x.shape[1] == x.shape[2]
     
     def __len__(self):
         return self.n_batch
@@ -91,13 +90,16 @@ class LatentLoader:
     def shuffle_ind(self):
         self.ind = np.random.permutation(self.ind)
 
-def train(model, loader, diffusion, optim, args):
+from plot import save_images
+def train(model, autoenc, loader, diffusion, optim, args):
 
+    hit = False
     loss_track = []
+    model.train()
     for i, x0 in enumerate(tqdm(loader)):
 
         x0 = x0.to(args.device)
-        t_ = np.random.randint(0, args.T)
+        t_ = np.random.randint(1, args.T)
         t = torch.tensor([t_]).float().to(args.device) / args.T
 
         # get xt
@@ -106,7 +108,6 @@ def train(model, loader, diffusion, optim, args):
         # push through model
         pred = model(xt, t)
         loss = (pred - eps).square().mean()
-        #loss = (xt - x0+pred).square().mean()
 
         # backprop
         optim.zero_grad()
@@ -114,30 +115,44 @@ def train(model, loader, diffusion, optim, args):
         optim.step()        
 
         loss_track.append(ptnp(loss))
+
+        # decode predictions to compare to original
+        if t.item() < 0.1 and not hit:
+            hit = True
+            pred_x0 = diffusion.p_x0_xt(xt, pred, t_)
+            pred_out = autoenc.decode(pred_x0) 
+            x0_out = autoenc.decode(x0)
+            save_images(x0_out, pred_out, os.path.join('results', args.test_name, 'diffusion/decode.png'))
     
     return np.mean(loss_track)
 
-def test(model, loader, diffusion, args):
+def test(model, diffusion, train_loader, test_loader, device):
     model.eval()
 
-    loss_track = []
-    for i, x0 in enumerate(tqdm(loader)):
-        if i > 5: break
+    for i, x0 in enumerate(tqdm(test_loader)):
+        if i > 4: break
 
-    return np.mean(loss_track)
+        x0 = x0.to(device)
+        score = diffusion.likelihood(x0, model)
+
+        if i == 0:
+            score_track = score
+        else:
+            score_track = torch.cat((score_track, score), dim=0)
+
+    return ptnp(score_track) 
 
 # run ood vs id testing on all available datasets
-def ood_test(model, save_path, train_dataset, d):
-    z = get_latents(save_path, train_dataset, 'train') 
-    z = rearrange(z, 'b (h w) -> b h w', h=d, w=d) 
-    train_loader = LatentLoader(z, batch_size=64, shuffle=True)
-
+def ood_test(model, diffusion, train_args, args):
     dataset_names = all_datasets()
+    save_path = os.path.join('results', args.test_name, 'diffusion')
+    train_loader = get_lat_loader(save_path, train_args.dataset, 'train', args.batch_size)
+
 
     score_track = {}
     for dataset in dataset_names:
-        test_loader = get_loader(args.data_path, dataset, 'test', args.batch_size//2)
-        score = test(model, train_loader, test_loader, loss_fn, args.device)
+        test_loader = get_lat_loader(save_path, dataset, 'test', args.batch_size)
+        score = test(model, diffusion, train_loader, test_loader, args.device)
         score_track[dataset] = score
 
         print(f'{dataset}: {score.mean():.5f}')
@@ -157,10 +172,10 @@ def main():
         save_latents(train_args, args.device) 
     
     # get latent loader
-    loader = get_lat_loader(save_path, train_args.dataset, batch_size=64)
+    loader = get_lat_loader(save_path, train_args.dataset, 'train', args.batch_size)
 
     # model
-    model = Transformer(dim=loader.dim).to(args.device)
+    model = Basic(dim=24).to(args.device)
     optim = torch.optim.Adam(model.parameters(), lr=args.lr)
     print(f'number of parameters: {sum(p.numel() for p in model.parameters())}')
 
@@ -170,8 +185,8 @@ def main():
     # load model and optimizer if resuming training
     if args.resume_path is not None:
         print('loading model and optimizer from checkpoint')
-        model.load_state_dict(torch.load(os.path.join(save_path, 'diff_model.pt')))
-        optim.load_state_dict(torch.load(os.path.join(save_path, 'diff_optim.pt')))
+        model.load_state_dict(torch.load(os.path.join(args.resume_path, 'diff_model.pt')))
+        optim.load_state_dict(torch.load(os.path.join(args.resume_path, 'diff_optim.pt')))
 
     # load autoencoder model
     autoenc = get_autoenc(train_args).to(args.device) 
@@ -182,25 +197,27 @@ def main():
     # train diffusion model
     loss_track = []
     for epoch in range(args.epochs):
-        loss = train(model, loader, diffusion, optim, args)
+        loss = train(model, autoenc, loader, diffusion, optim, args)
         loss_track.append(loss)
 
-        # save loss plot
+        ## save loss plot
         diff_loss_plot(save_path, loss_track)
-
 
         # sample batch
         if epoch % args.sample_freq == 0 and epoch > 0:
             print('sampling')
             sample = diffusion.sample(model, autoenc, dim=loader.dim)
-            save_sample(sample, os.path.join(save_path, f'diff_sample_{epoch}.png'))
+            save_sample(sample, os.path.join(save_path, f'diff_sample.png'))
 
-        # ood test
-        #print('ood test')
-        #score = ood_test(model, save_path, train_args.dataset, loader.d)
+            # ood test
+            print('ood test')
+            score = ood_test(model, diffusion, train_args, args)
+            metric = metrics(score, train_args.dataset)
+            print(metric)
 
         # save model
         torch.save(model.state_dict(), os.path.join(save_path, 'diff_model.pt'))
+        torch.save(optim.state_dict(), os.path.join(save_path, 'diff_optim.pt'))
 
 if __name__ == '__main__':
     main()

@@ -8,9 +8,9 @@ from utils import ptnp
 
 # main training loop
 def train(model, loader, loss_fn, optim, args):
+    model.train()
     recon_track, iso_track = [], []
     for i, (x, _) in enumerate(tqdm(loader)):
-        #if i > 5: break
         x = x.to(args.device)
 
         # push through model

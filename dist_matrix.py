@@ -15,15 +15,15 @@ class DistMatrix:
         self.model = Percept().eval().to(args.device)
 
         self.mean = None; self.std = None
-        #self.mean, self.std = self.get_mean_std(loader, args.device)
-        self.mean = 0.3062; self.std = 0.2787
+        self.mean, self.std = self.get_mean_std(loader, args.device)
+        #self.mean = 0.3062; self.std = 0.2787
         print(f'using mean: {self.mean:.5f} and std: {self.std:.5f} for normalizing perceptual distance matrix')
 
     # get mean and std of perceptual distance to center data
     def get_mean_std(self, loader, device):
         value = []
         for i, (x, _) in enumerate(tqdm(loader)):
-            if i > 1000: break
+            if i > 100: break
 
             x = x.to(device)
             dist = self.__call__(x)

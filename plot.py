@@ -64,7 +64,7 @@ def diff_loss_plot(save_path, track):
 
     np.save(os.path.join(save_path, 'diff_loss.npy'), track)
 
-def save_sample(x, save_path, n=4):
+def save_sample(x, save_path, n=12):
     batch_size = x.shape[0]
     assert batch_size >= 4*n, 'batch size must be greater than 4*n'
     x = x[:4*n]
@@ -72,6 +72,7 @@ def save_sample(x, save_path, n=4):
     # rearrage into grid of nxn images
     x = rearrange(x, '(b1 b2) c h w -> b1 b2 c h w', b1=4, b2=n)
     x = rearrange(x, 'b1 b2 c h w -> (b1 h) (b2 w) c')
+    x = torch.clamp(x, 0, 1)
     x = ptnp(x)
 
     # save image
@@ -99,6 +100,7 @@ def save_images(x, x_out, save_path, n=8):
     x_out = rearrange(x_out, 'b1 b2 c h w -> (b1 h) (b2 w) c')
 
     # convert to cpu
+    x = torch.clamp(x, 0, 1)
     x = ptnp(x)
     x_out = torch.clamp(x_out, 0, 1)
     x_out = ptnp(x_out)
