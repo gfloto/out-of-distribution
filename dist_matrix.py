@@ -2,7 +2,7 @@ import sys, os
 import math
 import torch
 import numpy as np
-from einops import rearrange
+from tqdm import tqdm
 
 from percept import Percept
 from datasets import get_loader
@@ -16,14 +16,14 @@ class DistMatrix:
 
         self.mean = None; self.std = None
         self.mean, self.std = self.get_mean_std(loader, args.device)
-        self.mean = 0.34538; self.std = 0.29584
+        #self.mean = 0.3062; self.std = 0.2787
         print(f'using mean: {self.mean:.5f} and std: {self.std:.5f} for normalizing perceptual distance matrix')
 
     # get mean and std of perceptual distance to center data
     def get_mean_std(self, loader, device):
         value = []
-        for (x, _) in loader:
-            if len(value) > 1000: break
+        for i, (x, _) in enumerate(tqdm(loader)):
+            if i > 100: break
 
             x = x.to(device)
             dist = self.__call__(x)
@@ -32,7 +32,6 @@ class DistMatrix:
             for i in range(x.shape[0]):
                 for j in range(i+1, x.shape[0]):
                     value.append(dist[i,j].item())
-
         value = np.array(value)
         value = np.log(value) - np.log(1 - value)
 
@@ -65,12 +64,12 @@ class DistMatrix:
                 dist_batch = (dist_batch - self.mean) / self.std
                 dist_batch = torch.sigmoid(dist_batch)
 
-            # l2 has close 0, far 2 (z on unit sphere)
-            # inner prod has close 1, far -1
-            if self.metric == 'inner_prod':
-                dist_batch = -2*dist_batch + 1
-            elif self.metric == 'l2':
-                dist_batch = 2*dist_batch
+                # l2 has close 0, far 2 (z on unit sphere)
+                # inner prod has close 1, far -1
+                if self.metric == 'inner_prod':
+                    dist_batch = -2*dist_batch + 1
+                elif self.metric == 'l2':
+                    dist_batch = 2*dist_batch
 
             dist = torch.cat((dist, dist_batch)) if dist is not None else dist_batch 
 

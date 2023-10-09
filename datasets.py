@@ -33,10 +33,10 @@ class FakeData(Dataset):
 def all_datasets():
     datasets = [
         'constant', 'random',
-        'mnist', 'fmnist', 'kmnist',
-        'svhn', 'lsun', 'celeba', 
-        'cifar100', 'imagenet',
-        'cifar10',
+        'mnist', 'fmnist', 'kmnist', 'cifar10',
+        'svhn', 'celeba',
+        'lsun',
+        'cifar100', 'imagenet'#, 'cifar10',
     ]
     return datasets
 
@@ -63,19 +63,19 @@ def get_loader(path, dataset_name, split, batch_size):
 
     # get dataset, assumes that '__main__' was run to download images already
     if dataset_name == 'mnist':
-        dataset = datasets.MNIST(root=path, train=train, download=True, transform=grey_transforms)
+        dataset = datasets.MNIST(root=path, train=train, download=False, transform=grey_transforms)
     elif dataset_name == 'fmnist':
-        dataset = datasets.FashionMNIST(root=path, train=train, download=True, transform=grey_transforms)
+        dataset = datasets.FashionMNIST(root=path, train=train, download=False, transform=grey_transforms)
     elif dataset_name == 'kmnist':
-        dataset = datasets.KMNIST(root=path, train=train, download=True, transform=grey_transforms)
+        dataset = datasets.KMNIST(root=path, train=train, download=False, transform=grey_transforms)
     elif dataset_name == 'svhn':
-        dataset = datasets.SVHN(root=path, split=split, download=True, transform=colour_transforms)
+        dataset = datasets.SVHN(root=path, split=split, download=False, transform=colour_transforms)
     elif dataset_name == 'cifar10':
-        dataset = datasets.CIFAR10(root=path, train=train, download=True, transform=colour_transforms)
+        dataset = datasets.CIFAR10(root=path, train=train, download=False, transform=colour_transforms)
     elif dataset_name == 'cifar100':
-        dataset = datasets.CIFAR100(root=path, train=train, download=True, transform=colour_transforms)
+        dataset = datasets.CIFAR100(root=path, train=train, download=False, transform=colour_transforms)
     elif dataset_name == 'celeba':
-        dataset = datasets.CelebA(root=path, split=split, download=True, transform=colour_transforms)
+        dataset = datasets.CelebA(root=path, split=split, download=False, transform=colour_transforms)
     elif dataset_name == 'lsun':
         split = 'bedroom_train' #if train else 'bedroom_val'
         path = '/drive2/ood/lsun/'
@@ -85,7 +85,7 @@ def get_loader(path, dataset_name, split, batch_size):
         dataset = datasets.ImageNet(root=path, split=split, transform=colour_transforms)
     elif dataset_name in ['constant', 'random']:
         dataset = FakeData(dataset_type=dataset_name)
-    else: raise NotImplementedError
+    else: raise ValueError(f'invalid dataset name: {dataset_name}')
 
     # get loader
     loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)
@@ -106,7 +106,7 @@ from models.autoenc import get_autoenc
 def z_store(model, loader, device):
     z_all = None; recon_all = None
     for i, (x, _) in enumerate(tqdm(loader)):
-        if i == 24: break
+        if i == 6: break
         x = x.to(device)
 
         _, mu, x_out = model(x)
@@ -122,32 +122,25 @@ def z_store(model, loader, device):
     return z_all, recon_all
 
 # given experiment name, save latent space representations of all datasets
-def save_latents(name, train_dataset, device):
-    batch_size = 2048
-
+def save_latents(train_args, device, batch_size=2048):
     # make dir of compressed representations
-    save_path = os.path.join(name, 'lat')
+    save_path = os.path.join('results', train_args.test_name, 'diffusion', 'lat')
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
-    # get args
-    with open(os.path.join(name, 'args.json'), 'r') as f:
-        args = json.load(f)
-        args = Namespace(**args)
-
     # load model
-    model = get_autoenc(args).to(args.device)
-    model.load_state_dict(torch.load(os.path.join(name, 'model.pt')))
+    model = get_autoenc(train_args).to(device)
+    model.load_state_dict(torch.load(os.path.join('results', train_args.test_name, 'model.pt')))
 
     datasets = all_datasets()
     for i, dataset in enumerate(datasets):
-        if dataset == train_dataset: 
+        if dataset == train_args.dataset: 
             modes = ['train', 'test']
         else: 
             modes = ['test']
 
         for mode in modes:
-            loader = get_loader(args.data_path, dataset, mode, batch_size)
+            loader = get_loader(train_args.data_path, dataset, mode, batch_size)
             z, recon = z_store(model, loader, device)
 
             # save z
@@ -157,7 +150,10 @@ def save_latents(name, train_dataset, device):
 def get_latents(path, dataset, mode):
     assert mode in ['train', 'test']
 
-    z = torch.load(os.path.join(path, 'lat', f'{dataset}_{mode}_z.pt'))
+    try:
+        z = torch.load(os.path.join(path, 'lat', f'{dataset}_{mode}_z.pt'))
+    except:
+        raise ValueError(f'latent space representations for {dataset} {mode} not found try running with --gen_lats flag')
     return z
 
 import matplotlib.pyplot as plt

@@ -31,21 +31,18 @@ def loss_plot(save_path, track):
     center_track = np.array(track['center'])
     plt.style.use('seaborn')
 
-    fig = plt.figure(figsize=(6,6))
-    fig1 = fig.add_subplot(221)
-    fig2 = fig.add_subplot(222)
-    fig3 = fig.add_subplot(223)
-    fig4 = fig.add_subplot(224)
+    fig = plt.figure(figsize=(12,4))
+    fig1 = fig.add_subplot(131)
+    fig2 = fig.add_subplot(132)
+    fig3 = fig.add_subplot(133)
 
     fig1.plot(recon_track, 'k')
     fig2.plot(iso_track, 'r')
-    fig3.plot(center_track, 'g')
-    fig4.plot(recon_track + iso_track + center_track, 'b')
+    fig3.plot(recon_track + iso_track, 'b')
 
     fig1.set_title('Reconstruction')
     fig2.set_title('Isometry')
-    fig3.set_title('Centering')
-    fig4.set_title('Total Loss')
+    fig3.set_title('Total Loss')
 
     plt.tight_layout()
     plt.savefig(os.path.join(save_path,'loss.png'))
@@ -53,9 +50,21 @@ def loss_plot(save_path, track):
 
     np.save(os.path.join(save_path, 'recon.npy'), recon_track)
     np.save(os.path.join(save_path, 'iso.npy'), iso_track)
-    np.save(os.path.join(save_path, 'center.npy'), center_track)
 
-def save_sample(x, save_path, n=8):
+def diff_loss_plot(save_path, track):
+    fig = plt.figure(figsize=(4,4))
+    fig1 = fig.add_subplot(111)
+
+    fig1.plot(track, 'k')
+    fig1.set_title('Diffusion Loss')
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_path,'diff_loss.png'))
+    plt.close()
+
+    np.save(os.path.join(save_path, 'diff_loss.npy'), track)
+
+def save_sample(x, save_path, n=12):
     batch_size = x.shape[0]
     assert batch_size >= 4*n, 'batch size must be greater than 4*n'
     x = x[:4*n]
@@ -63,6 +72,7 @@ def save_sample(x, save_path, n=8):
     # rearrage into grid of nxn images
     x = rearrange(x, '(b1 b2) c h w -> b1 b2 c h w', b1=4, b2=n)
     x = rearrange(x, 'b1 b2 c h w -> (b1 h) (b2 w) c')
+    x = torch.clamp(x, 0, 1)
     x = ptnp(x)
 
     # save image
@@ -90,6 +100,7 @@ def save_images(x, x_out, save_path, n=8):
     x_out = rearrange(x_out, 'b1 b2 c h w -> (b1 h) (b2 w) c')
 
     # convert to cpu
+    x = torch.clamp(x, 0, 1)
     x = ptnp(x)
     x_out = torch.clamp(x_out, 0, 1)
     x_out = ptnp(x_out)
