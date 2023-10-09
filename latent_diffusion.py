@@ -25,9 +25,9 @@ def get_args():
     parser.add_argument('--data_path', default='/drive2/ood/', help='train dataset, either odo or damage')
     parser.add_argument('--resume_path', default=None, help='experiment path to resume training from')
 
-    parser.add_argument('--batch_size', type=int, default=256, help='input batch size')
+    parser.add_argument('--batch_size', type=int, default=32, help='input batch size')
     parser.add_argument('--epochs', type=int, default=500, help='number of epochs to train for')
-    parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
+    parser.add_argument('--lr', type=float, default=1e-6, help='learning rate')
     parser.add_argument('--T', type=int, default=500, help='number of diffusion steps')
     parser.add_argument('--device', default='cuda', help='device being used')
 
@@ -175,7 +175,7 @@ def main():
     loader = get_lat_loader(save_path, train_args.dataset, 'train', args.batch_size)
 
     # model
-    model = Basic(dim=24).to(args.device)
+    model = Basic(dim=36).to(args.device)
     optim = torch.optim.Adam(model.parameters(), lr=args.lr)
     print(f'number of parameters: {sum(p.numel() for p in model.parameters())}')
 

@@ -33,7 +33,7 @@ class FakeData(Dataset):
 def all_datasets():
     datasets = [
         'constant', 'random',
-        'mnist', 'fmnist', 'kmnist', 'cifar10'
+        'mnist', 'fmnist', 'kmnist', 'cifar10',
         'svhn', 'celeba',
         'lsun',
         'cifar100', 'imagenet'#, 'cifar10',
