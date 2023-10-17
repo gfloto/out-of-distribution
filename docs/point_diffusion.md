@@ -42,13 +42,14 @@ where we define (somewhat unintuitively) $\ab^{s+1}_t = \prod_{i=s+1}^t \a_i$, (
 With this information in mind, we can now find a solution to $\g_t$.
 
 $$\begin{aligned}
-    \sab_t \x_0 + \sum_{s=1}^t \sab^{s+1}_t \g_s k_n &= \sab_t \x_0 + (1-\ab_t)k_n \\
-    \sum_{s=1}^t \sab^{s+1}_t \g_s &= 1-\ab_t \\
-    \g_t + \sum_{s=1}^{t-1} \sab^{s+1}_t \g_s &= 1-\ab_t \\
-    \g_t &= 1-\ab_t - \sum_{s=1}^{t-1} \sab^{s+1}_t \g_s \\
+    \sab_t \x_0 + \sum_{s=1}^t \sab^{s+1}_t \g_s k_n &= \sab_t \x_0 + (1-\sab_t)k_n \\
+    \sum_{s=1}^t \sab^{s+1}_t \g_s &= 1-\sab_t \\
+    \g_t + \sum_{s=1}^{t-1} \sab^{s+1}_t \g_s &= 1-\sab_t \\
+    \g_t &= 1-\sab_t - \sum_{s=1}^{t-1} \sab^{s+1}_t \g_s \\
+    \g_t &= 1 - \sa_t
 \end{aligned}$$
 
-Which has a natural recursive solution.
+Which has a nice simplification.
 
 ## Deriving $q(\x_{t-1}|\x_t,\x_0)$
 The main derivation for the generalized point ddpm is to find the distribution $q(\x_{t-1}|\x_t,\x_0)$. We begin with the following:

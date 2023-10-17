@@ -83,6 +83,37 @@ class DistMatrix:
 
         return out + out.T + torch.eye(x.shape[0]).to(x.device)
 
+# pairwise distance matrix using perceptual distance
+class DistTune:
+    def __init__(self, metric, device):
+        self.device = device
+        self.metric = metric
+        self.model = Percept().eval().to(device)
+
+        self.mean = 0.3062; self.std = 0.2787
+
+    @torch.no_grad()
+    def __call__(self, x, y):
+        # x is batch of images, y is single image
+        # copy y to match batch size
+        y = y.repeat(x.shape[0], 1, 1, 1)
+
+        dist_batch = self.model(x, y)
+
+        if self.mean is not None:
+            dist_batch = dist_batch.log() - (1 - dist_batch).log()
+            dist_batch = (dist_batch - self.mean) / self.std
+            dist_batch = torch.sigmoid(dist_batch)
+
+            # l2 has close 0, far 2 (z on unit sphere)
+            # inner prod has close 1, far -1
+            if self.metric == 'inner_prod':
+                dist_batch = -2*dist_batch + 1
+            elif self.metric == 'l2':
+                dist_batch = 2*dist_batch
+
+        return dist_batch
+
 # pairwise gram matrix
 def z_dist(x, metric):
     assert len(x.shape) == 2
