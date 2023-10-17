@@ -15,8 +15,9 @@ def make_alpha_bars(T):
 
 def make_alphas(T):
     # beta = 1 - (alpha_bar_t / alpha_bar_{t-1})
-    alpha_bars = make_alpha_bars(T+1)
+    alpha_bars = make_alpha_bars(T)
     alpha = alpha_bars[1:] / alpha_bars[:-1]
+    alpha = torch.cat([torch.tensor([1]), alpha])
     return alpha
 
 class Diffusion:
@@ -25,20 +26,20 @@ class Diffusion:
         self.device = device
         self.alpha_bars = make_alpha_bars(T).to(device)
         self.alphas = make_alphas(T).to(device)
-
         check_alpha = self.alphas.cumprod(dim=0)
+
+        # location of diffusion
+        self.gammas = 1 - self.alphas.sqrt()
+        self.k = torch.tensor(0).to(device)
 
     # get xt given x0 and t for training the diffusion model
     def q_xt_x0(self, x0, t):
         alpha_bar = self.alpha_bars[t]
         eps = torch.randn_like(x0)
         xt = alpha_bar.sqrt() * x0 + (1 - alpha_bar).sqrt() * eps
-        return xt, eps
+        xt += (1 - alpha_bar.sqrt()) * self.k
 
-    def q_xtm1(self, x0, eps, t):
-        alpha_bar = self.alpha_bars[t]
-        xt = alpha_bar.sqrt() * x0 + (1 - alpha_bar).sqrt() * eps
-        return xt
+        return xt, eps
     
     # get x_{t-1} given x_t and t for likelihood calculation
     def q_xt_xtm1(self, xtm1, t):
@@ -46,13 +47,14 @@ class Diffusion:
         eps = torch.randn_like(xtm1)
 
         xt = alpha.sqrt() * xtm1 + (1 - alpha).sqrt() * eps
+        xt += (1 - alpha.sqrt()) * self.k
+
         return xt, eps
 
     def p_x0_xt(self, xt, pred, t):
         alpha_bar = self.alpha_bars[t]
         return (xt - (1 - alpha_bar).sqrt() * pred) / alpha_bar.sqrt()
     
-    # TODO: namimg of this probabily is wrong
     # get x_{t-1} given x_t and t for sampling from the diffusion model
     def p_xtm1_xt(self, xt, pred, t):
         alpha = self.alphas[t]
@@ -72,20 +74,15 @@ class Diffusion:
     # for T steps, get x_T, x_{T-1}, ..., x_0 to generate a sample
     @torch.no_grad()
     def sample(self, model, autoenc, dim):
-        x = torch.randn(64, dim).to(self.device)
+        x = torch.randn(64, dim).to(self.device) + self.k
         for t_ in tqdm(range(self.T-1, 0, -1)):
             t = torch.tensor([t_]).float().to(self.device) / self.T
 
             pred = model(x, t)
-            #x = self.p_xtm1_xt(x, pred, t_)
+            x = self.p_xtm1_xt(x, pred, t_)
 
-            alpha = self.alphas[t_]
-            alpha_bar = self.alpha_bars[t_]
-            alpha_bar_prev = self.alpha_bars[t_-1]
-            sig = ( (1-alpha_bar_prev) / (1-alpha_bar) * (1-alpha) ).sqrt()
-
-            x = 1/alpha.sqrt() * (x - (1-alpha)/(1-alpha_bar).sqrt() * pred)
-            x += sig * torch.randn_like(x)
+            # print average norm of x
+            #print(x.norm(dim=1).mean())
         
         # normalize
         x = autoenc.decode(x)
@@ -96,19 +93,12 @@ class Diffusion:
     # L_t-1 (x0) = below
     def likelihood(self, x0, model):
         total_ll = torch.zeros(x0.shape[0]).to(self.device)
-        #for t_ in range(self.T):
         for t_ in range(self.T-1, 0, -10):
             t = torch.tensor([t_]).float().to(self.device) / self.T
             xt, eps = self.q_xt_x0(x0, t_)
 
-            # parameters
-            alpha = self.alphas[t_]
-            alpha_bar = self.alpha_bars[t_]
-            c = (1-alpha) / ( (2*alpha)*(1-alpha_bar) )
-            alpha_bar = self.alpha_bars[t_]
-
             pred = model(xt, t)
-            ll = c * (pred - eps).square().mean(dim=(1))
+            ll = (pred - x0).square().mean(dim=(1))
             total_ll += ll
         return total_ll
 

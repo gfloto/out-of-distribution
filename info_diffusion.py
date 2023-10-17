@@ -26,7 +26,7 @@ def get_args():
     parser.add_argument('--batch_size', type=int, default=64, help='input batch size')
     parser.add_argument('--epochs', type=int, default=500, help='number of epochs to train for')
     parser.add_argument('--lr', type=float, default=1e-6, help='learning rate')
-    parser.add_argument('--T', type=int, default=500, help='number of diffusion steps')
+    parser.add_argument('--T', type=int, default=10, help='number of diffusion steps')
     parser.add_argument('--device', default='cuda', help='device being used')
 
     parser.add_argument('--sample_freq', type=int, default=10, help='frequency of saving model')
@@ -128,7 +128,7 @@ def main():
     with open(os.path.join('results', args.test_name, 'args.json'), 'r') as f:
         train_args = json.load(f) 
         train_args = argparse.Namespace(**train_args)
-    save_path = os.path.join('results', args.test_name, 'diffusion')
+    save_path = os.path.join('results', args.test_name, 'info_diffusion')
     os.makedirs(save_path, exist_ok=True)
 
     # get latent loader

@@ -1,7 +1,10 @@
+import os
 import torch
+import numpy as np
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, Dataset
+import matplotlib.pyplot as plt
 
 # converts black and white images to color by stacking
 class Grey2Color:
@@ -91,72 +94,66 @@ def get_loader(path, dataset_name, split, batch_size):
     loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)
     return loader
 
-
-# latent space datasets
-# ---------------------------- #
-import os 
-import json 
-from tqdm import tqdm
-from argparse import Namespace
-
-from models.autoenc import get_autoenc
-
-# save latent space representations of all datasets
-@torch.no_grad()
-def z_store(model, loader, device):
-    z_all = None; recon_all = None
-    for i, (x, _) in enumerate(tqdm(loader)):
-        if i == 6: break
-        x = x.to(device)
-
-        _, mu, x_out = model(x)
-        recon = (x - x_out).square().mean(dim=(1,2,3))
-
-        if z_all is None:
-            z_all = mu
-            recon_all = recon
-        else:
-            z_all = torch.cat((z_all, mu), dim=0)
-            recon_all = torch.cat((recon_all, recon), dim=0)
-    
-    return z_all, recon_all
-
-# given experiment name, save latent space representations of all datasets
-def save_latents(train_args, device, batch_size=2048):
-    # make dir of compressed representations
-    save_path = os.path.join('results', train_args.test_name, 'diffusion', 'lat')
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
-
-    # load model
-    model = get_autoenc(train_args).to(device)
-    model.load_state_dict(torch.load(os.path.join('results', train_args.test_name, 'model.pt')))
-
-    datasets = all_datasets()
-    for i, dataset in enumerate(datasets):
-        if dataset == train_args.dataset: 
-            modes = ['train', 'test']
-        else: 
-            modes = ['test']
-
-        for mode in modes:
-            loader = get_loader(train_args.data_path, dataset, mode, batch_size)
-            z, recon = z_store(model, loader, device)
-
-            # save z
-            torch.save(z, os.path.join(save_path, f'{dataset}_{mode}_z.pt'))
-            torch.save(recon, os.path.join(save_path, f'{dataset}_{mode}_recon.pt'))
-
 def get_latents(path, dataset, mode):
     assert mode in ['train', 'test']
 
-    try:
-        z = torch.load(os.path.join(path, 'lat', f'{dataset}_{mode}_z.pt'))
-    except:
-        raise ValueError(f'latent space representations for {dataset} {mode} not found try running with --gen_lats flag')
+    if mode == 'train':
+        z = torch.load(os.path.join(path, 'autoenc_lat', f'{dataset}_train_z.pt'))
+    else:
+        z = torch.load(os.path.join(path, 'tuned_lat', f'{dataset}_z.pt'))
     return z
 
-import matplotlib.pyplot as plt
+# convenience function for getting latent loader
+def get_lat_loader(save_path, dataset, mode, batch_size=64):
+    assert mode in ['train', 'test']
+    if mode == 'test': batch_size = 32
+
+    z = get_latents(save_path, dataset, mode) 
+    loader = LatentLoader(z, batch_size=batch_size, shuffle=True)
+    if mode == 'test':
+        z_loss = torch.load(os.path.join(save_path, 'tuned_lat', f'{dataset}_loss.pt'))
+        return loader, z_loss
+    else:
+        return loader
+
+class LatentLoader:
+    def __init__(self, x, batch_size, shuffle=True):
+        self.x = x
+        self.shuffle = shuffle
+        self.batch_size = batch_size
+        self.n_batch = int(np.ceil(self.x.shape[0] / self.batch_size))
+
+        self.i = 0
+        if self.shuffle:
+            self.ind = np.random.permutation(np.arange(x.shape[0]))
+        else:
+            self.ind = np.arange(x.shape[0])
+
+        self.dim = x.shape[1]
+    
+    def __len__(self):
+        return self.n_batch
+    
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.i < self.n_batch - 1:
+            ind = self.ind[self.i * self.batch_size : (self.i + 1) * self.batch_size]
+        elif self.i == self.n_batch - 1:
+            ind = self.ind[self.i * self.batch_size : ]
+        else:
+            self.i = 0
+            if self.shuffle: self.shuffle_ind()
+            raise StopIteration
+
+        x_ = self.x[ind]
+        self.i += 1
+
+        return x_ 
+
+    def shuffle_ind(self):
+        self.ind = np.random.permutation(self.ind)
 
 if __name__ == '__main__':
     path = '/drive2/ood/'
@@ -171,4 +168,3 @@ if __name__ == '__main__':
             plt.title(name)
             plt.show()
             break
-
