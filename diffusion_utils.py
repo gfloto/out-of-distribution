@@ -102,6 +102,59 @@ class Diffusion:
             total_ll += ll
         return total_ll
 
+class ComposedDiffusion:
+    def __init__(self, T):
+        self.T = T
+        self.encode = []
+        self.decode = []
+    
+    def add(self, encoder, decoder):
+        encoder.eval()
+        decoder.eval()
+        
+        self.encode.append(encoder)
+        self.decode.append(decoder)
+
+    @torch.no_grad()
+    def forward(self, x):
+        if len(self.encode) == 0:
+            return x.clone()
+
+        t = torch.tensor([1 / self.T]).float().to(x.device)
+        for model in self.encode:
+            x = model(x, t) + t * torch.randn_like(x)
+            t += 1 / self.T
+
+        return x
+
+    @torch.no_grad()
+    def sample(self, x):
+        t = torch.tensor([len(self.decode) / self.T]).float().to(x.device)
+
+        for model in self.decode[::-1]:
+            x = model(x, t)
+            t -= 1 / self.T
+            x += t * torch.randn_like(x)
+        
+        return x
+
+    @torch.no_grad()
+    def ood(self, x0):
+        t = torch.tensor([1 / self.T]).float().to(x0.device)
+
+        x = x0.clone()
+        for model in self.encode:
+            x = model(x, t)
+            #x += t * torch.randn_like(x)
+            t += 1 / self.T
+
+        score = x.norm(dim=1)
+        return score
+
+    def remove(self):
+        self.encode.pop()
+        self.decode.pop()
+
 import matplotlib.pyplot as plt
 if __name__ == '__main__':
     T = 2000

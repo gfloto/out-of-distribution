@@ -51,6 +51,23 @@ def loss_plot(save_path, track):
     np.save(os.path.join(save_path, 'recon.npy'), recon_track)
     np.save(os.path.join(save_path, 'iso.npy'), iso_track)
 
+# plot for info diff training loss
+def infodiff_loss_plot(save_path, enc_track, dec_track):
+    fig = plt.figure(figsize=(4,4))
+    fig1 = fig.add_subplot(111)
+
+    fig1.plot(enc_track, 'k', label='Encoder')
+    fig1.plot(dec_track, 'r', label='Decoder')
+    fig1.legend()
+    fig1.set_title('Info Diffusion Loss')
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_path,'infodiff_loss.png'))
+    plt.close()
+
+    np.save(os.path.join(save_path, 'enc_loss.npy'), enc_track)
+    np.save(os.path.join(save_path, 'dec_loss.npy'), dec_track)
+
 def diff_loss_plot(save_path, track):
     fig = plt.figure(figsize=(4,4))
     fig1 = fig.add_subplot(111)

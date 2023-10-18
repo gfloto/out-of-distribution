@@ -37,7 +37,7 @@ def z_store(model, loader, mode, device):
 # given experiment name, save latent space representations of all datasets
 def save_autoenc_latents(train_args, device, batch_size=2048):
     # make dir of compressed representations
-    save_path = os.path.join('results', train_args.test_name, 'diffusion', 'autoenc_lat')
+    save_path = os.path.join('results', train_args.test_name, 'autoenc_lat')
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
@@ -71,7 +71,7 @@ available, via the save_latents function below.
 
 def save_tuned_latents(train_args, device, batch_size=32):
     # make dir of compressed representations
-    save_path = os.path.join('results', train_args.test_name, 'diffusion', 'tuned_lat')
+    save_path = os.path.join('results', train_args.test_name, 'tuned_lat')
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 

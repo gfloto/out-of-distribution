@@ -18,6 +18,7 @@ def get_args():
 
     parser.add_argument('--dataset', default='cifar10', help='dataset, either odo or damage')
     parser.add_argument('--lat_dim', type=int, default=36, help='latent dimension')
+    parser.add_argument('--spheres', type=int, default=1, help='product space of spheres')
 
     parser.add_argument('--recon', default='l2', help='loss, either l2 or l1')
     parser.add_argument('--recon_lambda', type=float, default=1., help='reconstruction loss weight')
@@ -46,6 +47,7 @@ def get_args():
     assert args.lat_dim > 0, 'latent dimension must be positive'
     assert args.recon in ['l1', 'l2'], 'recon loss must be l1 or l2'
     assert args.metric in ['inner_prod', 'l2'], 'metric must be inner_prod or l2'
+    assert args.lat_dim % args.spheres == 0, 'lat dim must be divisible by spheres'
 
     # make results directory
     if not os.path.exists('results'):
