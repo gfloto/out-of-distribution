@@ -29,6 +29,5 @@ class Loss(nn.Module):
         if not test: 
             recon = recon.mean()
             iso = iso.mean()
-            center = center.mean()
 
         return recon, iso
