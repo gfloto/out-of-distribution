@@ -38,19 +38,20 @@ class VAE(nn.Module):
         self.enc_conv = torch.nn.Conv2d(ddconfig["z_channels"], embed_dim, 1)
 
         # linear layer
-        self.enc_lin = torch.nn.Linear(self.conv_size**2 * embed_dim, lat_dim)
+        out_dim = self.spheres * self.lat_dim
+        self.enc_lin = torch.nn.Linear(self.conv_size**2 * embed_dim, out_dim)
 
         # additional decoder layers
-        self.dec_lin = torch.nn.Linear(lat_dim, self.conv_size**2 * embed_dim)
+        self.dec_lin = torch.nn.Linear(out_dim, self.conv_size**2 * embed_dim)
         self.dec_conv = torch.nn.Conv2d(embed_dim, ddconfig["z_channels"], 1)
 
     def sphere_norm(self, x):
         x = rearrange(x, 'b (s d) -> (b s) d', s=self.spheres, d=self.lat_dim)
-        x /= torch.norm(x, dim=1, keepdim=True)
-        x = rearrange(x, '(b s) d -> b s d', s=self.spheres, d=self.lat_dim)
+        x = x + torch.norm(x, dim=1, keepdim=True)
+        x = rearrange(x, '(b s) d -> b (s d)', s=self.spheres, d=self.lat_dim)
 
         # ensure norm of mu is 1
-        x /= self.spheres
+        x = x + math.sqrt(self.spheres)
         return x
 
     def forward(self, input, t=None, test=False):

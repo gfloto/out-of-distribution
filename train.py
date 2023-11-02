@@ -15,9 +15,6 @@ def train(model, loader, loss_fn, optim, args):
 
         # push through model
         _, mu, x_out = model(x)
-        print(mu.shape)
-        print(torch.norm(mu, dim=-1))
-        quit()
         recon, iso = loss_fn(x, x_out, mu)
         loss = args.recon_lambda * recon + iso
             

@@ -29,7 +29,7 @@ def main():
     loader = get_loader(args.data_path, args.dataset, 'train', args.batch_size)
     model = get_autoenc(args).to(args.device)
     optim = torch.optim.Adam(model.parameters(), lr=args.lr)
-    loss_fn = Loss(loader, args) 
+    loss_fn = Loss(args) 
     print(f'number of parameters: {sum(p.numel() for p in model.parameters())}')
 
     # load model and optimizer if resuming training
