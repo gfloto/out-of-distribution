@@ -48,10 +48,8 @@ class VAE(nn.Module):
             z = z / torch.norm(z, dim=1, keepdim=True)
             mu = mu / torch.norm(mu, dim=1, keepdim=True)
 
-        if not test:
-            x_out = self.decode(z, t)
-        else:
-            x_out = self.decode(mu, t)
+        if not test: x_out = self.decode(z, t)
+        else: x_out = self.decode(mu, t)
 
         return z, mu, x_out
 

@@ -90,7 +90,8 @@ class DistTune:
         self.metric = metric
         self.model = Percept().eval().to(device)
 
-        self.mean = 0.3062; self.std = 0.2787
+        self.mean = -0.00233; self.std = 0.46457
+        #self.mean = 0.3062; self.std = 0.2787
 
     @torch.no_grad()
     def __call__(self, x, y):
@@ -107,10 +108,8 @@ class DistTune:
 
             # l2 has close 0, far 2 (z on unit sphere)
             # inner prod has close 1, far -1
-            if self.metric == 'inner_prod':
-                dist_batch = -2*dist_batch + 1
-            elif self.metric == 'l2':
-                dist_batch = 2*dist_batch
+            if self.metric == 'inner_prod': dist_batch = -2*dist_batch + 1
+            elif self.metric == 'l2': dist_batch = 2*dist_batch
 
         return dist_batch
 

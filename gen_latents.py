@@ -81,9 +81,9 @@ def save_tuned_latents(train_args, device, batch_size=64):
         os.makedirs(save_path)
 
     datasets = all_datasets()
-    datasets.remove('cifar10')
-    #datasets = datasets[5:]
-    datasets = ['cifar10'] + datasets
+    datasets.remove(train_args.dataset)
+    datasets = datasets[2:]
+    datasets = [train_args.dataset] + datasets
 
     # get train dataloader
     train_loader = get_loader(train_args.data_path, train_args.dataset, 'train', batch_size)
@@ -121,7 +121,7 @@ def z_tune(train_loader, test_loader, model, dist_tune, device):
     #for i, (x_test, _) in enumerate(tqdm(test_loader)):
     total_loss = []
     for i, (x_test, _) in enumerate(test_loader):
-        if i == 100: break
+        if i == 10: break
         x_test = x_test.to(device)
 
         # latent representation of test data
@@ -135,7 +135,7 @@ def z_tune(train_loader, test_loader, model, dist_tune, device):
         # get batches of train data
         lat_loss = 0
         for j, (x_train, _) in enumerate(train_loader):
-            if j == 20: break
+            if j == 100: break
             x_train = x_train.to(device)
 
             # ideal distance from lpips
@@ -176,7 +176,7 @@ def z_tune(train_loader, test_loader, model, dist_tune, device):
     return total_loss
 
 if __name__ == '__main__':
-    test_name = 'lat_36'
+    test_name = 'fmnist'
     mode = 'tuned'
     assert mode in ['tuned', 'autoenc']
 

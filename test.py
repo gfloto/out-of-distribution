@@ -33,10 +33,8 @@ def test(model, train_loader, test_loader, loss_fn, device):
         recon = recon[:s]; center = center[:s]
         score = recon + iso
 
-        if i == 0:
-            score_track = score
-        else:
-            score_track = torch.cat((score_track, score), dim=0)
+        if i == 0: score_track = score
+        else: score_track = torch.cat((score_track, score), dim=0)
 
     return ptnp(score_track)
 
