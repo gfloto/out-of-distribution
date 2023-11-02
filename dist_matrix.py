@@ -90,7 +90,8 @@ class DistTune:
         self.metric = metric
         self.model = Percept().eval().to(device)
 
-        self.mean = 0.3062; self.std = 0.2787
+        self.mean = -0.7631; self.std = 0.38957
+        #self.mean = 0.3062; self.std = 0.2787
 
     @torch.no_grad()
     def __call__(self, x, y):

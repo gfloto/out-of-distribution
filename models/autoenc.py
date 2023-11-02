@@ -16,10 +16,13 @@ def get_autoenc(args):
     ddconfig = config['model']['params']['ddconfig']
     embed_dim = config['model']['params']['embed_dim']
 
-    return VAE(ddconfig, embed_dim, args.lat_dim, args.noise, args.norm)
+    return VAE(
+        ddconfig, embed_dim, args.lat_dim,
+        args.spheres, args.noise, args.norm
+    )
 
 class VAE(nn.Module):
-    def __init__(self, ddconfig, embed_dim, lat_dim, noise, norm, use_timestep=False):
+    def __init__(self, ddconfig, embed_dim, lat_dim, spheres, noise, norm, use_timestep=False):
         super().__init__()
         # make encoder and decoder
         self.encoder = Encoder(**ddconfig, use_timestep=use_timestep)
@@ -30,6 +33,7 @@ class VAE(nn.Module):
         self.noise = noise
         self.norm = norm
         self.lat_dim = lat_dim
+        self.spheres = spheres
         self.embed_dim = embed_dim
         self.enc_conv = torch.nn.Conv2d(ddconfig["z_channels"], embed_dim, 1)
 
@@ -40,18 +44,25 @@ class VAE(nn.Module):
         self.dec_lin = torch.nn.Linear(lat_dim, self.conv_size**2 * embed_dim)
         self.dec_conv = torch.nn.Conv2d(embed_dim, ddconfig["z_channels"], 1)
 
+    def sphere_norm(self, x):
+        x = rearrange(x, 'b (s d) -> (b s) d', s=self.spheres, d=self.lat_dim)
+        x /= torch.norm(x, dim=1, keepdim=True)
+        x = rearrange(x, '(b s) d -> b s d', s=self.spheres, d=self.lat_dim)
+
+        # ensure norm of mu is 1
+        x /= self.spheres
+        return x
+
     def forward(self, input, t=None, test=False):
         z, mu = self.encode(input, t)
 
         # ensure norm of z is 1
         if self.norm:
-            z = z / torch.norm(z, dim=1, keepdim=True)
-            mu = mu / torch.norm(mu, dim=1, keepdim=True)
+            z = self.sphere_norm(z)
+            mu = self.sphere_norm(mu)
 
-        if not test:
-            x_out = self.decode(z, t)
-        else:
-            x_out = self.decode(mu, t)
+        if not test: x_out = self.decode(z, t)
+        else: x_out = self.decode(mu, t)
 
         return z, mu, x_out
 

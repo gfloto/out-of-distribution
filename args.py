@@ -17,8 +17,8 @@ def get_args():
     parser.add_argument('--resume_path', default=None, help='experiment path to resume training from')
 
     parser.add_argument('--dataset', default='cifar10', help='dataset, either odo or damage')
-    parser.add_argument('--lat_dim', type=int, default=36, help='latent dimension')
-    parser.add_argument('--spheres', type=int, default=1, help='product space of spheres')
+    parser.add_argument('--lat_dim', type=int, default=16, help='latent dimension')
+    parser.add_argument('--spheres', type=int, default=8, help='product space of spheres')
 
     parser.add_argument('--recon', default='l2', help='loss, either l2 or l1')
     parser.add_argument('--recon_lambda', type=float, default=1., help='reconstruction loss weight')
