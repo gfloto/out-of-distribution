@@ -30,7 +30,7 @@ def test(model, train_loader, test_loader, loss_fn, device):
 
         # only look at how test data is related to train
         iso = iso[:s,s:].mean(dim=(1))
-        recon = recon[:s]; center = center[:s]
+        recon = recon[:s]
         score = recon + iso
 
         if i == 0: score_track = score
