@@ -11,5 +11,5 @@ ensure that everything is centered
 | CIFAR-10 | SVHN | 0.975 |
 | MNIST | FMNIST | 1.000 |
 | MNIST | KMNIST | 0.999 |
-| FMNIST | MNIST | 0.850 |
+| FMNIST | MNIST | 0.962 |
 | FMNIST | KMNIST | 0.880 |
