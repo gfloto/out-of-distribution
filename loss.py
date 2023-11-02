@@ -25,13 +25,10 @@ class Loss(nn.Module):
         # isometry loss
         iso = (x_mtx - mu_mtx).square()
 
-        # center
-        center = 1e-3 * mu.square().mean(dim=(1))
-
         # keep batch if testing ood
         if not test: 
             recon = recon.mean()
             iso = iso.mean()
             center = center.mean()
 
-        return recon, iso, center
+        return recon, iso

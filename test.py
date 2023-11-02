@@ -26,12 +26,12 @@ def test(model, train_loader, test_loader, loss_fn, device):
 
         # push through model
         _, mu, x_out = model(x, test=True)
-        recon, iso, center = loss_fn(x, x_out, mu, test=True)
+        recon, iso = loss_fn(x, x_out, mu, test=True)
 
         # only look at how test data is related to train
         iso = iso[:s,s:].mean(dim=(1))
         recon = recon[:s]; center = center[:s]
-        score = recon + iso + center
+        score = recon + iso
 
         if i == 0:
             score_track = score

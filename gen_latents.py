@@ -2,16 +2,22 @@ import os
 import json
 import torch
 import argparse
+import numpy as np
 from tqdm import tqdm
 
 from dist_matrix import DistTune, z_dist
 from models.autoenc import get_autoenc
 from datasets import all_datasets, get_loader
+from sklearn.metrics import roc_curve, auc
 
 '''
 the following functions are for generating data given
 trained autoencder model. this is expected to perform
 worse than directly optimizing for latents...
+
+
+note: this shouldn't be used at this point...
+instead, we can just save both the initial and tuned state as [2, 1024] tensors
 '''
 
 # save latent space representations of all datasets
@@ -60,7 +66,6 @@ def save_autoenc_latents(train_args, device, batch_size=2048):
 
             # save z
             torch.save(z, os.path.join(save_path, f'{dataset}_{mode}_z.pt'))
-            #torch.save(recon, os.path.join(save_path, f'{dataset}_{mode}_recon.pt'))
 
 '''
 the following functions are for optimizing latents
@@ -69,13 +74,16 @@ it will be assumed that the training latents are
 available, via the save_latents function below.
 '''
 
-def save_tuned_latents(train_args, device, batch_size=32):
+def save_tuned_latents(train_args, device, batch_size=64):
     # make dir of compressed representations
     save_path = os.path.join('results', train_args.test_name, 'tuned_lat')
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
     datasets = all_datasets()
+    datasets.remove('cifar10')
+    #datasets = datasets[5:]
+    datasets = ['cifar10'] + datasets
 
     # get train dataloader
     train_loader = get_loader(train_args.data_path, train_args.dataset, 'train', batch_size)
@@ -88,70 +96,88 @@ def save_tuned_latents(train_args, device, batch_size=32):
     dist_tune = DistTune('inner_prod', 'cuda')
 
     for i, dataset in enumerate(datasets):
-        print(dataset)
         test_loader = get_loader(train_args.data_path, dataset, 'test', batch_size=1)
-        z, z_loss = z_tune(train_loader, test_loader, model, dist_tune, device)
-        print(z_loss.mean(), z_loss.std())
+        loss = z_tune(train_loader, test_loader, model, dist_tune, device)
+        if i == 0: 
+            id_scores = loss
+            id_labels = np.zeros_like(id_scores)
+        else:
+            ood_scores = loss
+            ood_labels = np.ones_like(ood_scores)
 
-        # save z
-        torch.save(z, os.path.join(save_path, f'{dataset}_z.pt'))
-        torch.save(z_loss, os.path.join(save_path, f'{dataset}_loss.pt'))
+            scores = np.concatenate((id_scores, ood_scores), axis=0)
+            labels = np.concatenate((id_labels, ood_labels), axis=0)
+            fpr, tpr, _ = roc_curve(labels, scores, pos_label=1)
+            aucroc = auc(fpr, tpr)
 
-@ torch.no_grad()
-def compute_loss(train_loader, model, dist_tune, y_lat, device):
-    x = train_loader.dataset.x[-1024:].to(device)
-    
-    dist = dist_tune(x, y) 
-    _, x_lat, _ = model(x)
-    
+            print(f'{dataset} aucroc: {aucroc:.4f}')
 
-
+# tune latent representations to respect lpips distance to training data...
 def z_tune(train_loader, test_loader, model, dist_tune, device):
-    y_lat_all = []; y_loss_all = []
+    z1_test_all = []; z2_test_all = []
     model.eval()
 
-    for i, (y, _) in enumerate(tqdm(test_loader)):
-        if i == 1000: break
+    # get a batch of test data to tune
+    #for i, (x_test, _) in enumerate(tqdm(test_loader)):
+    total_loss = []
+    for i, (x_test, _) in enumerate(test_loader):
+        if i == 100: break
+        x_test = x_test.to(device)
 
-        # with gradient for y
-        y_lat = model(y.to(device))[1].detach().clone() 
-        y_lat = torch.nn.Parameter(y_lat)
+        # latent representation of test data
+        z_test = model(x_test)[1].detach().clone() 
+        z1_test_all.append(z_test[0].clone()) # save initial latent
 
-        optim = torch.optim.Adam([y_lat], lr=0.25)
+        # make latents a parameter to optimize
+        z_test = torch.nn.Parameter(z_test)
+        optim = torch.optim.Adam([z_test], lr=0.2)
 
-        for j, (x, _) in enumerate(train_loader):
-            if j == 12: break
-            x = x.to(device)
-            y = y.to(device)
+        # get batches of train data
+        lat_loss = 0
+        for j, (x_train, _) in enumerate(train_loader):
+            if j == 20: break
+            x_train = x_train.to(device)
 
             # ideal distance from lpips
-            dist = dist_tune(x, y)
+            dist = dist_tune(x_train, x_test)
 
-            # get inner product distance
-            _, x_lat, _ = model(x)
-            lat_dist = (x_lat * y_lat).sum(dim=1)
+            # get inner product distance between latents
+            _, z_train, _ = model(x_train)
+            lat_dist = (z_train * z_test).sum(dim=1)
             
             # loss
             loss = (dist - lat_dist).square().mean()
+
+            # optimize latent
             optim.zero_grad()
             loss.backward()
             optim.step()
 
-            # normalize y_lat
-            y_lat.data /= y_lat.data.norm(dim=1, keepdim=True)
+            # normalize embeddings to be on unit sphere
+            z_test.data /= z_test.data.norm(dim=1, keepdim=True)
 
-        # compute loss on large batch
-        loss = compute_loss(train_loader, model, dist_tune, y_lat, device)
+        # save tuned latent
+        z2_test_all.append(z_test[0].clone())
 
-        # save y_lat
-        y_lat_all.append(y_lat.data)
-        y_loss_all.append(loss.item())
+        # get loss between: x_test and model.decode(z2_test)
+        x_out = model.decode(z_test)
+        recon_loss = (x_test - x_out).square().mean()
 
-    return torch.cat(y_lat_all, dim=0), torch.tensor(y_loss_all) 
+        # get loss based on how far z2_test is from z1_test
+        lat_loss = (z1_test_all[-1] - z2_test_all[-1]).square().mean()
+
+        #loss = recon_loss + lat_loss
+        loss = lat_loss
+        total_loss.append(loss.item())
+
+        # total loss
+        #print(f'recon_loss: {recon_loss.item():.4f}, lat_loss: {lat_loss.item():.4f}, total_loss: {loss.item():.4f}')
+    print()
+    return total_loss
 
 if __name__ == '__main__':
     test_name = 'lat_36'
-    mode = 'autoenc'
+    mode = 'tuned'
     assert mode in ['tuned', 'autoenc']
 
     # load autoencoder model
