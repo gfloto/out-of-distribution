@@ -47,11 +47,11 @@ class VAE(nn.Module):
 
     def sphere_norm(self, x):
         x = rearrange(x, 'b (s d) -> (b s) d', s=self.spheres, d=self.lat_dim)
-        x = x + torch.norm(x, dim=1, keepdim=True)
+        x = x / torch.norm(x, dim=1, keepdim=True)
         x = rearrange(x, '(b s) d -> b (s d)', s=self.spheres, d=self.lat_dim)
 
         # ensure norm of mu is 1
-        x = x + math.sqrt(self.spheres)
+        x = x / math.sqrt(self.spheres)
         return x
 
     def forward(self, input, t=None, test=False):
