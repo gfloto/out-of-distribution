@@ -12,4 +12,4 @@ ensure that everything is centered
 | MNIST | FMNIST | 1.000 |
 | MNIST | KMNIST | 0.999 |
 | FMNIST | MNIST | 0.962 |
-| FMNIST | KMNIST | 0.880 |
+| FMNIST | KMNIST | 0.936 |
