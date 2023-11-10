@@ -23,7 +23,6 @@ def get_args():
     parser.add_argument('--recon', default='l2', help='loss, either l2 or l1')
     parser.add_argument('--recon_lambda', type=float, default=1., help='reconstruction loss weight')
     parser.add_argument('--noise', type=float, default=0.01, help='noise level')
-    parser.add_argument('--norm', default='true', help='normalize data')
 
     parser.add_argument('--lr', type=float, default=1e-5, help='learning rate')
     parser.add_argument('--epochs', type=int, default=200, help='number of epochs to train for')
@@ -39,7 +38,6 @@ def get_args():
 
     # TODO: change this
     args.use_timestep = True
-    args.norm = bool_str(args.norm)
 
     # asserts
     assert args.test_name is not None, 'enter a test name'
@@ -53,8 +51,6 @@ def get_args():
     if not os.path.exists(os.path.join('results', args.test_name)):
         os.makedirs(os.path.join('results', args.test_name))
 
-    # save args
-    save_args(args)
     return args
 
 # save args to .json

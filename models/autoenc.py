@@ -18,11 +18,11 @@ def get_autoenc(args):
 
     return VAE(
         ddconfig, embed_dim, args.lat_dim,
-        args.spheres, args.noise, args.norm
+        args.spheres, args.noise
     )
 
 class VAE(nn.Module):
-    def __init__(self, ddconfig, embed_dim, lat_dim, spheres, noise, norm, use_timestep=False):
+    def __init__(self, ddconfig, embed_dim, lat_dim, spheres, noise, use_timestep=False):
         super().__init__()
         # make encoder and decoder
         self.encoder = Encoder(**ddconfig, use_timestep=use_timestep)
@@ -31,7 +31,6 @@ class VAE(nn.Module):
         # additional encoder layers
         self.conv_size = 2 # TODO: fix this
         self.noise = noise
-        self.norm = norm
         self.lat_dim = lat_dim
         self.spheres = spheres
         self.embed_dim = embed_dim
@@ -58,9 +57,8 @@ class VAE(nn.Module):
         z, mu = self.encode(input, t)
 
         # ensure norm of z is 1
-        if self.norm:
-            z = self.sphere_norm(z)
-            mu = self.sphere_norm(mu)
+        z = self.sphere_norm(z)
+        mu = self.sphere_norm(mu)
 
         if not test: x_out = self.decode(z, t)
         else: x_out = self.decode(mu, t)

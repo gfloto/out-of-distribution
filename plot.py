@@ -133,3 +133,34 @@ def save_images(x, x_out, save_path, n=8):
     plt.tight_layout()
     plt.savefig(save_path)
     plt.close()
+
+def save_tune_sample(x_test, x_init, x_tune, save_path):
+    x_test = torch.clamp(x_test, 0, 1)
+    x_init = torch.clamp(x_init, 0, 1)
+    x_tune = torch.clamp(x_tune, 0, 1)
+
+    x_test = x_test[0].cpu().numpy().transpose(1,2,0)
+    x_init = x_init[0].cpu().numpy().transpose(1,2,0)
+    x_tune = x_tune[0].cpu().numpy().transpose(1,2,0)
+
+    fig = plt.figure(figsize=(12,4))
+    fig1 = fig.add_subplot(131)
+    fig2 = fig.add_subplot(132)
+    fig3 = fig.add_subplot(133)
+
+    fig1.imshow(x_test)
+    fig2.imshow(x_init)
+    fig3.imshow(x_tune)
+
+    # make titles
+    fig1.set_title('Test Image')
+    fig2.set_title('Initial Image')
+    fig3.set_title('Tuned Image')
+
+    fig1.axis('off')
+    fig2.axis('off')
+    fig3.axis('off')
+
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()

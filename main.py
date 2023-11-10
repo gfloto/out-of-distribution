@@ -1,7 +1,7 @@
 import os 
 import torch
 
-from args import get_args
+from args import get_args, save_args
 from datasets import get_loader
 from models.autoenc import get_autoenc
 from loss import Loss
@@ -25,11 +25,17 @@ def main():
     args = get_args()
     save_path = os.path.join('results', args.test_name)
 
-    # dataloader, model, loss, etc
+    # get loader which is used to find mean and std of lpips to normalize train data
     loader = get_loader(args.data_path, args.dataset, 'train', args.batch_size)
+    loss_fn = Loss(loader, args) 
+
+    args.lpips_mean = loss_fn.x_dist.mean.item()
+    args.lpips_std = loss_fn.x_dist.std.item()
+    save_args(args)
+
+    # dataloader, model, loss, etc
     model = get_autoenc(args).to(args.device)
     optim = torch.optim.Adam(model.parameters(), lr=args.lr)
-    loss_fn = Loss(args) 
     print(f'number of parameters: {sum(p.numel() for p in model.parameters())}')
 
     # load model and optimizer if resuming training

@@ -5,9 +5,9 @@ from einops import rearrange
 from dist_matrix import DistMatrix
 
 class Loss(nn.Module):
-    def __init__(self, args):
+    def __init__(self, loader, args):
         super(Loss, self).__init__()
-        self.x_dist = DistMatrix(args)
+        self.x_dist = DistMatrix(loader, args)
         self.recon = args.recon
 
         self.spheres = args.spheres
