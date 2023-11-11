@@ -15,8 +15,8 @@ def train(model, loader, loss_fn, optim, args):
 
         # push through model
         _, mu, x_out = model(x)
-        recon, iso, center = loss_fn(x, x_out, mu)
-        loss = args.recon_lambda * recon + iso + center
+        recon, iso = loss_fn(x, x_out, mu)
+        loss = args.recon_lambda * recon + iso
             
         # optimize and clip gradients
         optim.zero_grad

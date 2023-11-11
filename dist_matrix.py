@@ -11,12 +11,12 @@ from datasets import get_loader
 class DistMatrix:
     def __init__(self, loader, args):
         self.device = args.device
-        self.metric = args.metric
         self.model = Percept().eval().to(args.device)
+        print('\n\n')
 
         self.mean = None; self.std = None
+        print('finding lpips mean and std')
         self.mean, self.std = self.get_mean_std(loader, args.device)
-        #self.mean = 0.3062; self.std = 0.2787
         print(f'using mean: {self.mean:.5f} and std: {self.std:.5f} for normalizing perceptual distance matrix')
 
     # get mean and std of perceptual distance to center data
@@ -59,17 +59,14 @@ class DistMatrix:
 
             # compute and store distances
             dist_batch = self.model(x1, x2)
+
             if self.mean is not None:
                 dist_batch = dist_batch.log() - (1 - dist_batch).log()
                 dist_batch = (dist_batch - self.mean) / self.std
                 dist_batch = torch.sigmoid(dist_batch)
 
-                # l2 has close 0, far 2 (z on unit sphere)
                 # inner prod has close 1, far -1
-                if self.metric == 'inner_prod':
-                    dist_batch = -2*dist_batch + 1
-                elif self.metric == 'l2':
-                    dist_batch = 2*dist_batch
+                dist_batch = -2*dist_batch + 1
 
             dist = torch.cat((dist, dist_batch)) if dist is not None else dist_batch 
 
@@ -85,53 +82,34 @@ class DistMatrix:
 
 # pairwise distance matrix using perceptual distance
 class DistTune:
-    def __init__(self, metric, device):
+    def __init__(self, mean, std, device):
         self.device = device
-        self.metric = metric
+        self.mean = mean; self.std = std
         self.model = Percept().eval().to(device)
 
-        self.mean = 0.3062; self.std = 0.2787
+    @torch.no_grad()
+    def feats(self, x):
+        return self.model.get_feats(x)
 
     @torch.no_grad()
-    def __call__(self, x, y):
-        # x is batch of images, y is single image
-        # copy y to match batch size
-        y = y.repeat(x.shape[0], 1, 1, 1)
-
-        dist_batch = self.model(x, y)
+    def __call__(self, x1, x2, feats=True):
+        dist_batch = self.model(x1, x2, feats=feats)
 
         if self.mean is not None:
             dist_batch = dist_batch.log() - (1 - dist_batch).log()
             dist_batch = (dist_batch - self.mean) / self.std
             dist_batch = torch.sigmoid(dist_batch)
 
-            # l2 has close 0, far 2 (z on unit sphere)
             # inner prod has close 1, far -1
-            if self.metric == 'inner_prod':
-                dist_batch = -2*dist_batch + 1
-            elif self.metric == 'l2':
-                dist_batch = 2*dist_batch
+            dist_batch = -2*dist_batch + 1
 
         return dist_batch
-
-# pairwise gram matrix
-def z_dist(x, metric):
-    assert len(x.shape) == 2
-
-    g = x @ x.T
-    if metric == 'inner_prod':
-        return g
-    elif metric == 'l2':
-        s = g.shape[0]
-        a = g.diag().repeat(s, 1)
-        return a.T + a - 2*g
-    else: raise ValueError('invalid distance mode')
 
 # ensure that dist matrix is correct
 def test_dist(data_path):
     # test torch cdist
     a = torch.randn(64, 12)
-    dist = z_dist(a, 'l2')
+    #dist = z_dist(a, 'l2')
 
     # check correctness
     for i in range(100):

@@ -17,13 +17,12 @@ def get_args():
     parser.add_argument('--resume_path', default=None, help='experiment path to resume training from')
 
     parser.add_argument('--dataset', default='cifar10', help='dataset, either odo or damage')
-    parser.add_argument('--lat_dim', type=int, default=36, help='latent dimension')
+    parser.add_argument('--lat_dim', type=int, default=16, help='latent dimension')
+    parser.add_argument('--spheres', type=int, default=8, help='product space of spheres')
 
     parser.add_argument('--recon', default='l2', help='loss, either l2 or l1')
     parser.add_argument('--recon_lambda', type=float, default=1., help='reconstruction loss weight')
     parser.add_argument('--noise', type=float, default=0.01, help='noise level')
-    parser.add_argument('--norm', default='true', help='normalize data')
-    parser.add_argument('--metric', default='inner_prod', help='metric to use for latent space')
 
     parser.add_argument('--lr', type=float, default=1e-5, help='learning rate')
     parser.add_argument('--epochs', type=int, default=200, help='number of epochs to train for')
@@ -39,13 +38,12 @@ def get_args():
 
     # TODO: change this
     args.use_timestep = True
-    args.norm = bool_str(args.norm)
 
     # asserts
     assert args.test_name is not None, 'enter a test name'
     assert args.lat_dim > 0, 'latent dimension must be positive'
     assert args.recon in ['l1', 'l2'], 'recon loss must be l1 or l2'
-    assert args.metric in ['inner_prod', 'l2'], 'metric must be inner_prod or l2'
+    assert args.lat_dim % args.spheres == 0, 'lat dim must be divisible by spheres'
 
     # make results directory
     if not os.path.exists('results'):
@@ -53,8 +51,6 @@ def get_args():
     if not os.path.exists(os.path.join('results', args.test_name)):
         os.makedirs(os.path.join('results', args.test_name))
 
-    # save args
-    save_args(args)
     return args
 
 # save args to .json

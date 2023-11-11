@@ -51,6 +51,23 @@ def loss_plot(save_path, track):
     np.save(os.path.join(save_path, 'recon.npy'), recon_track)
     np.save(os.path.join(save_path, 'iso.npy'), iso_track)
 
+# plot for info diff training loss
+def infodiff_loss_plot(save_path, enc_track, dec_track):
+    fig = plt.figure(figsize=(4,4))
+    fig1 = fig.add_subplot(111)
+
+    fig1.plot(enc_track, 'k', label='Encoder')
+    fig1.plot(dec_track, 'r', label='Decoder')
+    fig1.legend()
+    fig1.set_title('Info Diffusion Loss')
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_path,'infodiff_loss.png'))
+    plt.close()
+
+    np.save(os.path.join(save_path, 'enc_loss.npy'), enc_track)
+    np.save(os.path.join(save_path, 'dec_loss.npy'), dec_track)
+
 def diff_loss_plot(save_path, track):
     fig = plt.figure(figsize=(4,4))
     fig1 = fig.add_subplot(111)
@@ -113,6 +130,37 @@ def save_images(x, x_out, save_path, n=8):
     ax2.imshow(x_out)
     ax1.axis('off')
     ax2.axis('off')
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
+
+def save_tune_sample(x_test, x_init, x_tune, save_path):
+    x_test = torch.clamp(x_test, 0, 1)
+    x_init = torch.clamp(x_init, 0, 1)
+    x_tune = torch.clamp(x_tune, 0, 1)
+
+    x_test = x_test[0].cpu().numpy().transpose(1,2,0)
+    x_init = x_init[0].cpu().numpy().transpose(1,2,0)
+    x_tune = x_tune[0].cpu().numpy().transpose(1,2,0)
+
+    fig = plt.figure(figsize=(12,4))
+    fig1 = fig.add_subplot(131)
+    fig2 = fig.add_subplot(132)
+    fig3 = fig.add_subplot(133)
+
+    fig1.imshow(x_test)
+    fig2.imshow(x_init)
+    fig3.imshow(x_tune)
+
+    # make titles
+    fig1.set_title('Test Image')
+    fig2.set_title('Initial Image')
+    fig3.set_title('Tuned Image')
+
+    fig1.axis('off')
+    fig2.axis('off')
+    fig3.axis('off')
+
     plt.tight_layout()
     plt.savefig(save_path)
     plt.close()

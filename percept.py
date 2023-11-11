@@ -1,6 +1,6 @@
 """Stripped version of https://github.com/richzhang/PerceptualSimilarity/tree/master/models"""
 
-import sys, os
+import os
 import requests, hashlib
 import tqdm
 import torch
@@ -69,9 +69,10 @@ class Percept(nn.Module):
         model.load_state_dict(torch.load(ckpt, map_location=torch.device("cpu")), strict=False)
         return model
 
-    def forward(self, input, target):
+    def old_forward(self, input, target):
         in0_input, in1_input = (self.scaling_layer(input), self.scaling_layer(target))
         outs0, outs1 = self.net(in0_input), self.net(in1_input)
+
         feats0, feats1, diffs = {}, {}, {}
         lins = [self.lin0, self.lin1, self.lin2, self.lin3, self.lin4]
         for kk in range(len(self.chns)):
@@ -83,15 +84,42 @@ class Percept(nn.Module):
         for l in range(1, len(self.chns)):
             val += res[l]
 
+        # clip to 0-1 
         val = val.sum((1,2,3))
-
-        # clip to 0-1
-        #if torch.any(val > 1) or torch.any(val < 0):
-            #print("Warning: LPIPS distance outside range [0,1]. Clipping.")
         val = torch.clamp(val, 0, 1)
-
         return val
 
+    def forward(self, x1, x2, feats=False):
+        if not feats:
+            assert type(x1) == type(x2) == torch.Tensor, "Inputs should be image tensors"
+            y1, y2 = self.get_feats(x1), self.get_feats(x2)
+        else: 
+            assert type(x1) == type(x2) == list, "Inputs should be feature lists"
+            y1, y2 = x1, x2
+
+        diffs = []
+        for i in range(len(y1)):
+            diff = (y1[i] - y2[i])**2
+            diffs.append(diff)
+
+        lins = [self.lin0, self.lin1, self.lin2, self.lin3, self.lin4]
+        res = [spatial_average(lins[kk].model(diffs[kk]), keepdim=True) for kk in range(len(self.chns))]
+
+        val = res[0]
+        for l in range(1, len(self.chns)):
+            val += res[l]
+
+        val = val.sum((1,2,3))
+        val = torch.clamp(val, 0, 1)
+        return val
+
+    def get_feats(self, x):
+        x = self.scaling_layer(x)
+        feats = self.net(x)
+        feats = [normalize_tensor(feat) for feat in feats]
+        return feats
+
+import time
 class ScalingLayer(nn.Module):
     def __init__(self):
         super(ScalingLayer, self).__init__()
