@@ -141,8 +141,9 @@ def z_tune(train_loader, test_loader, model, dist_tune, batch_size, args, datase
         x_tuned = get_recon(z_test, model)
 
         # save samples
-        save_path = os.path.join('results', args.test_name, 'tune', f'{dataset}_{i}.png')
-        save_tune_sample(x_test, x_init, x_tuned, save_path)
+        if i < 10:
+            save_path = os.path.join('results', args.test_name, 'tune', f'{dataset}_{i}.png')
+            save_tune_sample(x_test, x_init, x_tuned, save_path)
 
         recon_init = dist_tune(x_init, x_test, feats=False).mean().item()
         recon_init = (1 - recon_init) / 2
@@ -158,7 +159,7 @@ def z_tune(train_loader, test_loader, model, dist_tune, batch_size, args, datase
 
         # total loss
         #print(f'lat loss: {loss_lat:.4f} init loss: {loss_init:.4f} recon loss: {recon_loss:.4f}')
-        print(f'lat loss: {loss_lat:.4f} recon loss: {recon_loss:.4f} init lat: {loss_init:.4f} init recon: {recon_init:.4f}')
+        #print(f'lat loss: {loss_lat:.4f} recon loss: {recon_loss:.4f} init lat: {loss_init:.4f} init recon: {recon_init:.4f}')
     return total_loss
 
 if __name__ == '__main__':
