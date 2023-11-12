@@ -16,27 +16,26 @@ def test(model, train_loader, test_loader, loss_fn, device):
     # iterate through both dataloaders
     for i, ((x_train, _), (x_test, _)) in enumerate(zip(train_loader, test_loader)): 
         if x_train.shape != x_test.shape: break
-        if i > 10: break
+    #for i, (x_test, _) in enumerate(test_loader):
+        #if i > 10: break
 
         s = x_train.shape[0] // 2
-
         x_train = x_train.to(device)
         x_test = x_test.to(device)
+
         x = torch.cat((x_test, x_train), dim=0)
 
         # push through model
-        _, mu, x_out = model(x, test=True)
-        recon, iso = loss_fn(x, x_out, mu, test=True)
+        _, mu, x_out = model(x_test, test=True)
+        _, _, adv = loss_fn(x_test, x_out, mu, label=None, test=True)
 
         # only look at how test data is related to train
-        iso = iso[:s,s:].mean(dim=(1))
-        recon = recon[:s]
-        score = recon + iso
+        #iso = iso[:s,s:].mean(dim=(1))
+        #adv = adv[:s]
+        score = adv
 
-        if i == 0:
-            score_track = score
-        else:
-            score_track = torch.cat((score_track, score), dim=0)
+        if i == 0: score_track = score
+        else: score_track = torch.cat((score_track, score), dim=0)
 
     return ptnp(score_track)
 

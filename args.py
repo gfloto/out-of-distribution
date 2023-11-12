@@ -20,13 +20,13 @@ def get_args():
     parser.add_argument('--lat_dim', type=int, default=16, help='latent dimension')
     parser.add_argument('--spheres', type=int, default=8, help='product space of spheres')
 
-    parser.add_argument('--recon', default='l2', help='loss, either l2 or l1')
+    parser.add_argument('--recon', default='l1', help='loss, either l2 or l1')
     parser.add_argument('--recon_lambda', type=float, default=1., help='reconstruction loss weight')
     parser.add_argument('--noise', type=float, default=0.01, help='noise level')
 
     parser.add_argument('--lr', type=float, default=1e-5, help='learning rate')
-    parser.add_argument('--epochs', type=int, default=200, help='number of epochs to train for')
-    parser.add_argument('--batch_size', type=int, default=32, help='input batch size')
+    parser.add_argument('--epochs', type=int, default=1000, help='number of epochs to train for')
+    parser.add_argument('--batch_size', type=int, default=128, help='input batch size')
 
     parser.add_argument('--max_grad_norm', type=float, default=1., help='max grad norm')
 

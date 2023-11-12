@@ -44,21 +44,24 @@ class VAE(nn.Module):
         self.dec_lin = torch.nn.Linear(out_dim, self.conv_size**2 * embed_dim)
         self.dec_conv = torch.nn.Conv2d(embed_dim, ddconfig["z_channels"], 1)
 
+    # latent vectors are distance (1,2)
     def sphere_norm(self, x):
         x = rearrange(x, 'b (s d) -> (b s) d', s=self.spheres, d=self.lat_dim)
-        x = x / torch.norm(x, dim=1, keepdim=True)
+        norm = torch.norm(x, dim=-1, keepdim=True)
+        # normalize each sphere to be length (1,2), remember, norm is positive...
+        x = x * (2*torch.sigmoid(norm)) / norm 
         x = rearrange(x, '(b s) d -> b (s d)', s=self.spheres, d=self.lat_dim)
 
-        # ensure norm of mu is 1
-        x = x / math.sqrt(self.spheres)
         return x
 
-    def forward(self, input, t=None, test=False):
+    def forward(self, input, t=None, test=False, encode_only=False):
         z, mu = self.encode(input, t)
 
         # ensure norm of z is 1
-        z = self.sphere_norm(z)
         mu = self.sphere_norm(mu)
+        z = self.sphere_norm(z)
+
+        if encode_only: return z, mu
 
         if not test: x_out = self.decode(z, t)
         else: x_out = self.decode(mu, t)

@@ -12,11 +12,13 @@ class DistMatrix:
     def __init__(self, loader, args):
         self.device = args.device
         self.model = Percept().eval().to(args.device)
-        print('\n\n')
 
         self.mean = None; self.std = None
         print('finding lpips mean and std')
-        self.mean, self.std = self.get_mean_std(loader, args.device)
+        print('not normalizing perceptual distance matrix')
+        self.mean = torch.tensor(0.).to(args.device)
+        self.std = torch.tensor(1.).to(args.device)
+        #self.mean, self.std = self.get_mean_std(loader, args.device)
         print(f'using mean: {self.mean:.5f} and std: {self.std:.5f} for normalizing perceptual distance matrix')
 
     # get mean and std of perceptual distance to center data
@@ -26,6 +28,7 @@ class DistMatrix:
             if i > 100: break
 
             x = x.to(device)
+            x = x[:32]
             dist = self.__call__(x)
 
             # get flattened upper triangular values

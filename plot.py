@@ -28,21 +28,32 @@ def test_plot(save_path, iso):
 def loss_plot(save_path, track):
     recon_track = np.array(track['recon'])
     iso_track = np.array(track['iso'])
-    center_track = np.array(track['center'])
+    label_track = np.array(track['label'])
+    delta_track = np.array(track['delta'])
+    adv_label_track = np.array(track['adv_label'])
     plt.style.use('seaborn')
 
-    fig = plt.figure(figsize=(12,4))
-    fig1 = fig.add_subplot(131)
-    fig2 = fig.add_subplot(132)
-    fig3 = fig.add_subplot(133)
+    fig = plt.figure(figsize=(9,6))
+    fig1 = fig.add_subplot(231)
+    fig2 = fig.add_subplot(232)
+    fig3 = fig.add_subplot(233)
+    fig4 = fig.add_subplot(234)
+    fig5 = fig.add_subplot(235)
+    fig6 = fig.add_subplot(236)
 
-    fig1.plot(recon_track, 'k')
-    fig2.plot(iso_track, 'r')
-    fig3.plot(recon_track + iso_track, 'b')
+    fig1.plot(iso_track, 'k')
+    fig2.plot(label_track, 'b')
+    fig3.plot(recon_track, 'g')
+    fig4.plot(delta_track, 'k')
+    fig5.plot(adv_label_track, 'b')
+    fig6.plot(recon_track + iso_track, 'r')
 
-    fig1.set_title('Reconstruction')
-    fig2.set_title('Isometry')
-    fig3.set_title('Total Loss')
+    fig1.set_title('Isometry')
+    fig2.set_title('Label')
+    fig3.set_title('Reconstruction')
+    fig4.set_title('Delta')
+    fig5.set_title('Adv Label')
+    fig6.set_title('Total Loss')
 
     plt.tight_layout()
     plt.savefig(os.path.join(save_path,'loss.png'))
@@ -50,6 +61,7 @@ def loss_plot(save_path, track):
 
     np.save(os.path.join(save_path, 'recon.npy'), recon_track)
     np.save(os.path.join(save_path, 'iso.npy'), iso_track)
+    np.save(os.path.join(save_path, 'adv.npy'), adv_label_track)
 
 # plot for info diff training loss
 def infodiff_loss_plot(save_path, enc_track, dec_track):
@@ -134,33 +146,21 @@ def save_images(x, x_out, save_path, n=8):
     plt.savefig(save_path)
     plt.close()
 
-def save_tune_sample(x_test, x_init, x_tune, save_path):
-    x_test = torch.clamp(x_test, 0, 1)
-    x_init = torch.clamp(x_init, 0, 1)
-    x_tune = torch.clamp(x_tune, 0, 1)
+# save batch of images, with titles
+def save_gen(x, delta, hard, save_path):
+    x = torch.clamp(x, 0, 1)
+    x = ptnp(x)
+    x = rearrange(x, 'b c h w -> b h w c')
 
-    x_test = x_test[0].cpu().numpy().transpose(1,2,0)
-    x_init = x_init[0].cpu().numpy().transpose(1,2,0)
-    x_tune = x_tune[0].cpu().numpy().transpose(1,2,0)
-
-    fig = plt.figure(figsize=(12,4))
-    fig1 = fig.add_subplot(131)
-    fig2 = fig.add_subplot(132)
-    fig3 = fig.add_subplot(133)
-
-    fig1.imshow(x_test)
-    fig2.imshow(x_init)
-    fig3.imshow(x_tune)
-
-    # make titles
-    fig1.set_title('Test Image')
-    fig2.set_title('Initial Image')
-    fig3.set_title('Tuned Image')
-
-    fig1.axis('off')
-    fig2.axis('off')
-    fig3.axis('off')
-
+    # save 4x4 grid
+    fig = plt.figure(figsize=(16,16))
+    for i in range(16):
+        ax = fig.add_subplot(4,4,i+1)
+        ax.imshow(x[i])
+        ax.set_title(f'delta: {delta[i]:.2f}, hard: {hard[i]:.2f}')
+        ax.axis('off')
+    
     plt.tight_layout()
     plt.savefig(save_path)
     plt.close()
+
